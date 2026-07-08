@@ -1,0 +1,47 @@
+import type { ComponentType } from "react";
+
+export type PageName =
+  | "dashboard"
+  | "allItems"
+  | "itemDetail"
+  | "settings"
+  | "rooms"
+  | "categories"
+  | "addItem"
+  | "wishlist"
+  | "reports"
+  | "map"
+  | "searchResults"
+  | "notifications";
+
+export interface IconProps {
+  size?: number;
+  className?: string;
+}
+
+export type IconComponent = ComponentType<IconProps>;
+
+export interface Item {
+  id: number;
+  name: string;
+  category: string;
+  room: string;
+  qty: number;
+  value: number;
+  addedDate: string;
+  updatedDate: string;
+  tags: string[];
+  missingInfo: boolean;
+  lowStock: boolean;
+  Icon: IconComponent;
+  iconBg: string;
+  iconColor: string;
+}
+
+export interface NavItem {
+  id: string;
+  label: string;
+  desc: string;
+  Icon: IconComponent;
+  highlight?: boolean;
+}
