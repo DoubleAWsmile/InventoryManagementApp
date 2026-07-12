@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import {
   Eye, EyeOff, AlertCircle, Loader2, Layers, Package, Map, ShieldCheck, Sparkles,
 } from "lucide-react";
@@ -6,9 +6,10 @@ import { Logo } from "./TopNav";
 
 export interface LoginPageProps {
   onSuccess: () => void;
+  onCreateAccount: () => void;
 }
 
-export default function LoginPage({ onSuccess }: LoginPageProps) {
+export default function LoginPage({ onSuccess, onCreateAccount }: LoginPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -18,7 +19,7 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     if (!email.trim() || !password.trim()) {
@@ -300,7 +301,13 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
           {/* Create account */}
           <p className="text-sm text-center text-muted-foreground mt-6">
             {"Don't have an account? "}
-            <button className="text-accent font-semibold hover:underline">Create Account</button>
+            <button
+              type="button"
+              onClick={onCreateAccount}
+              className="text-accent font-semibold hover:underline"
+            >
+              Create Account
+            </button>
           </p>
 
           {/* Legal */}

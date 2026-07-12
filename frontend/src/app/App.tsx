@@ -4,6 +4,7 @@ import { NotificationsProvider } from "../context/NotificationsContext";
 import { InventoryPrefsProvider } from "../context/InventoryPrefsContext";
 import type { PageName } from "../types";
 import LoginPage from "../components/LoginPage";
+import CreateAccountPage from "../components/CreateAccountPage";
 import DashboardPage from "../components/DashboardPage";
 import AllItemsPage from "../components/AllItemsPage";
 import ItemDetailPage from "../components/ItemDetailPage";
@@ -19,6 +20,7 @@ import NotificationsPage from "../pages/NotificationsPage";
 
 function AppRouter() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authPage, setAuthPage] = useState<"signIn" | "createAccount">("signIn");
   const [currentPage, setCurrentPage] = useState<PageName>("dashboard");
   const [selectedItemId, setSelectedItemId] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,7 +48,21 @@ function AppRouter() {
   };
 
   if (!isLoggedIn) {
-    return <LoginPage onSuccess={() => setIsLoggedIn(true)} />;
+    if (authPage === "createAccount") {
+      return (
+        <CreateAccountPage
+          onFinished={() => setAuthPage("signIn")}
+          onBackToSignIn={() => setAuthPage("signIn")}
+        />
+      );
+    }
+
+    return (
+      <LoginPage
+        onSuccess={() => setIsLoggedIn(true)}
+        onCreateAccount={() => setAuthPage("createAccount")}
+      />
+    );
   }
 
   switch (currentPage) {
