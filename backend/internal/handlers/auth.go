@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/DoubleAWsmile/inventorymanagementapp/backend/internal/models"
+	"github.com/DoubleAWsmile/InventoryManagementApp/internal/models"
 )
 
 func (h *UserHandler) DemoLogin(w http.ResponseWriter, r *http.Request) {

@@ -3,7 +3,7 @@ package routes
 import (
 	"net/http"
 
-	"github.com/DoubleAWsmile/inventorymanagementapp/backend/internal/handlers"
+	"github.com/DoubleAWsmile/InventoryManagementApp/internal/handlers"
 	"github.com/go-chi/chi/v5"
 )
 

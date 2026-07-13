@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/DoubleAWsmile/inventorymanagementapp/backend/internal/models"
+	"github.com/DoubleAWsmile/InventoryManagementApp/internal/models"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

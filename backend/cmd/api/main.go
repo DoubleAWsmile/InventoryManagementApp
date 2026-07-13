@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/DoubleAWsmile/inventorymanagementapp/backend/internal/db"
-	"github.com/DoubleAWsmile/inventorymanagementapp/backend/internal/handlers"
-	"github.com/DoubleAWsmile/inventorymanagementapp/backend/internal/routes"
+	"github.com/DoubleAWsmile/InventoryManagementApp/internal/db"
+	"github.com/DoubleAWsmile/InventoryManagementApp/internal/handlers"
+	"github.com/DoubleAWsmile/InventoryManagementApp/internal/routes"
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
 )
