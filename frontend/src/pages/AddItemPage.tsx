@@ -6,6 +6,7 @@ import {
 import { TopNav, NavStrip } from "../components/TopNav";
 import type { PageName } from "../types";
 import { NAV_ID_TO_PAGE, PAGE_TO_NAV_ID } from "../utils/nav";
+import { createItem } from "../services/api";
 
 const CATEGORIES = ["Electronics", "Tools", "Clothing", "Documents", "Cables", "Safety", "Household Supplies", "Furniture"];
 const ROOMS = ["Bedroom", "Office", "Garage", "Kitchen", "Living Room", "Closet", "Utility Room", "Hall Closet"];
@@ -35,14 +36,17 @@ const EMPTY: FormState = {
 };
 
 export interface AddItemPageProps {
+  userId: string;
   onSignOut: () => void;
   onNavigate: (page: PageName) => void;
   onSettings?: () => void;
 }
 
-export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddItemPageProps) {
+export default function AddItemPage({ userId, onSignOut, onNavigate, onSettings }: AddItemPageProps) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const set = (field: keyof FormState, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -53,12 +57,56 @@ export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddIt
       tags: prev.tags.includes(tag) ? prev.tags.filter((t) => t !== tag) : [...prev.tags, tag],
     }));
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => {
-      setSaved(false);
+  const handleSave = async () => {
+    setError(null);
+    setSaved(false);
+
+    if (!form.name.trim() || !form.category || !form.room) {
+      setError("Item name, category, and room are required.");
+      return;
+    }
+
+    const quantity = Number(form.qty);
+    const estimatedValue = form.value === "" ? null : Number(form.value);
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      setError("Quantity must be at least 1.");
+      return;
+    }
+    if (estimatedValue !== null && (!Number.isFinite(estimatedValue) || estimatedValue < 0)) {
+      setError("Estimated value must be 0 or greater.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await createItem({
+        userId,
+        name: form.name.trim(),
+        category: form.category,
+        roomLocation: form.room,
+        quantity,
+        estimatedValue,
+        purchaseDate: form.purchaseDate ? new Date(`${form.purchaseDate}T00:00:00`).toISOString() : null,
+        condition: form.condition,
+        brand: form.brand.trim(),
+        model: form.model.trim(),
+        serialNumber: form.serial.trim(),
+        description: form.description.trim(),
+        notes: form.notes.trim(),
+        photoUrl: "",
+        photoFilename: "",
+        photoMimeType: "",
+        photoSizeBytes: null,
+        tags: form.tags,
+      });
+      setSaved(true);
       setForm(EMPTY);
-    }, 1800);
+      window.setTimeout(() => setSaved(false), 1800);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to save this item.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -89,6 +137,11 @@ export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddIt
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800">
             <CheckCircle2 size={16} className="text-emerald-600 flex-shrink-0" />
             <span className="text-sm font-semibold">Item saved successfully!</span>
+          </div>
+        )}
+        {error && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700">
+            <span className="text-sm font-semibold">{error}</span>
           </div>
         )}
 
@@ -291,12 +344,14 @@ export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddIt
             <div className="flex items-center gap-3">
               <button
                 onClick={handleSave}
+                disabled={saving}
                 className="flex items-center gap-2 h-10 px-5 rounded-xl bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent/90 transition-colors shadow-sm"
               >
-                <CheckCircle2 size={14} />Save Item
+                <CheckCircle2 size={14} />{saving ? "Saving…" : "Save Item"}
               </button>
               <button
-                onClick={() => setForm(EMPTY)}
+                onClick={handleSave}
+                disabled={saving}
                 className="flex items-center gap-2 h-10 px-5 rounded-xl border border-border bg-card text-sm font-semibold text-foreground hover:bg-muted transition-colors"
               >
                 Save and Add Another

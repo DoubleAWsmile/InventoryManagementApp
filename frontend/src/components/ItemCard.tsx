@@ -5,7 +5,7 @@ import type { IconComponent } from "../types";
 /* ── Shared card props ───────────────────────────────────────────── */
 
 interface BaseItemCardProps {
-  id: number;
+  id: string | number;
   name: string;
   category: string;
   room: string;

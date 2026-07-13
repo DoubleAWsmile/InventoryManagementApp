@@ -6,7 +6,7 @@ import {
   Grid, List, Camera,
   FileText, Archive, Wifi, Layers, RefreshCw,
 } from "lucide-react";
-import { TopNav, NavStrip } from "./TopNav";
+import { TopNav, NavStrip } from "../components/TopNav";
 import type { PageName } from "../types";
 import { useTheme } from "../theme/ThemeContext";
 import { useInventoryPrefs } from "../context/InventoryPrefsContext";

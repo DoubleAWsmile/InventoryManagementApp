@@ -88,7 +88,7 @@ func (h *ItemHandler) GetRecentItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limit := 5
+	limit := 6
 	if rawLimit := r.URL.Query().Get("limit"); rawLimit != "" {
 		parsed, err := strconv.Atoi(rawLimit)
 		if err == nil && parsed > 0 && parsed <= 50 {

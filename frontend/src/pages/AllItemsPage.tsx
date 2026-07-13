@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Plus, ChevronRight, ChevronDown, Home, MoreHorizontal,
   Search, X, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle,
@@ -6,12 +6,13 @@ import {
   Package,
 } from "lucide-react";
 
-import { TopNav, NavStrip } from "./TopNav";
-import { FullItemCard } from "./ItemCard";
-import { ALL_ITEMS, CATEGORY_COLORS, TAG_COLORS, PAGE_SIZE } from "../data/items";
-import type { PageName } from "../types";
+import { TopNav, NavStrip } from "../components/TopNav";
+import { FullItemCard } from "../components/ItemCard";
+import { CATEGORY_COLORS, TAG_COLORS, PAGE_SIZE, toDisplayItem } from "../data/items";
+import type { Item, PageName } from "../types";
 import { NAV_ID_TO_PAGE } from "../utils/nav";
 import { useInventoryPrefs } from "../context/InventoryPrefsContext";
+import { getItems } from "../services/api";
 
 /* ── Sort options ────────────────────────────────────────────────── */
 
@@ -28,14 +29,16 @@ const SORT_OPTIONS = [
 /* ── Component ───────────────────────────────────────────────────── */
 
 export interface AllItemsPageProps {
+  userId: string;
   onBack: () => void;
   onSignOut: () => void;
-  onItemSelect: (id: number) => void;
+  onItemSelect: (item: Item) => void;
   onSettings?: () => void;
   onNavigate?: (page: PageName, query?: string) => void;
 }
 
 export default function AllItemsPage({
+  userId,
   onBack,
   onSignOut,
   onItemSelect,
@@ -57,13 +60,35 @@ export default function AllItemsPage({
   const [showMissingInfo, setShowMissingInfo] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [sortOpen, setSortOpen] = useState(false);
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const allCategories = useMemo(() => [...new Set(ALL_ITEMS.map((i) => i.category))].sort(), []);
-  const allRooms = useMemo(() => [...new Set(ALL_ITEMS.map((i) => i.room))].sort(), []);
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadError(null);
+
+    getItems(userId)
+      .then((responseItems) => {
+        if (active) setItems(responseItems.map(toDisplayItem));
+      })
+      .catch((requestError) => {
+        if (active) setLoadError(requestError instanceof Error ? requestError.message : "Unable to load inventory.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [userId]);
+
+  const allCategories = useMemo(() => [...new Set(items.map((i) => i.category))].sort(), [items]);
+  const allRooms = useMemo(() => [...new Set(items.map((i) => i.room))].sort(), [items]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    let items = ALL_ITEMS.filter((item) => {
+    let filteredItems = items.filter((item) => {
       const matchSearch =
         !q ||
         item.name.toLowerCase().includes(q) ||
@@ -79,12 +104,14 @@ export default function AllItemsPage({
       );
     });
 
-    return [...items].sort((a, b) => {
+    return [...filteredItems].sort((a, b) => {
       let vA: string | number = a.id;
       let vB: string | number = b.id;
       if (sortBy === "name") { vA = a.name; vB = b.name; }
       else if (sortBy === "category") { vA = a.category; vB = b.category; }
       else if (sortBy === "room") { vA = a.room; vB = b.room; }
+      else if (sortBy === "addedDate") { vA = Date.parse(a.addedDate); vB = Date.parse(b.addedDate); }
+      else if (sortBy === "updatedDate") { vA = Date.parse(a.updatedDate); vB = Date.parse(b.updatedDate); }
       else if (sortBy === "qty") { vA = a.qty; vB = b.qty; }
       else if (sortBy === "value") { vA = a.value; vB = b.value; }
       if (typeof vA === "string") {
@@ -93,7 +120,7 @@ export default function AllItemsPage({
       }
       return sortDir === "asc" ? (vA as number) - (vB as number) : (vB as number) - (vA as number);
     });
-  }, [search, activeCategory, activeRoom, showLowStock, showMissingInfo, sortBy, sortDir]);
+  }, [items, search, activeCategory, activeRoom, showLowStock, showMissingInfo, sortBy, sortDir]);
 
   const visible = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
@@ -156,11 +183,17 @@ export default function AllItemsPage({
             <button className="flex items-center gap-2 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors shadow-sm">
               <SlidersHorizontal size={14} />Bulk Actions
             </button>
-            <button className="flex items-center gap-2 h-9 px-4 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors shadow-sm">
+            <button onClick={() => onNavigate?.("addItem")} className="flex items-center gap-2 h-9 px-4 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors shadow-sm">
               <Plus size={14} />Add Item
             </button>
           </div>
         </div>
+
+        {(loading || loadError) && (
+          <div className={`px-4 py-3 rounded-xl border text-sm ${loadError ? "bg-red-50 border-red-200 text-red-700" : "bg-muted/40 border-border text-muted-foreground"}`}>
+            {loadError ?? "Loading inventory…"}
+          </div>
+        )}
 
         {/* Controls bar */}
         <div className="flex items-center gap-3 flex-wrap">
@@ -224,7 +257,7 @@ export default function AllItemsPage({
 
           {/* Result count */}
           <div className="ml-auto text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">{filtered.length}</span> of {ALL_ITEMS.length} items
+            <span className="font-semibold text-foreground">{filtered.length}</span> of {items.length} items
           </div>
         </div>
 
@@ -307,7 +340,7 @@ export default function AllItemsPage({
                   lowStock={prefShowLowStock ? item.lowStock : false}
                   missingInfo={prefShowMissingInfo ? item.missingInfo : false}
                   currencySymbol={currencySymbol}
-                  onClick={() => onItemSelect(item.id)}
+                  onClick={() => onItemSelect(item)}
                 />
               ))}
             </div>
@@ -339,7 +372,7 @@ export default function AllItemsPage({
               visible.map((item, idx) => (
                 <div
                   key={item.id}
-                  onClick={() => onItemSelect(item.id)}
+                  onClick={() => onItemSelect(item)}
                   className={["grid items-center px-5 py-3.5 group cursor-pointer hover:bg-muted/30 transition-colors", idx !== visible.length - 1 ? "border-b border-border/50" : ""].join(" ")}
                   style={{ gridTemplateColumns: "2fr 1fr 1fr 60px 80px 120px 32px" }}
                 >

@@ -1,17 +1,17 @@
-import { useState } from "react";
-import BarChartSimple from "./BarChartSimple";
+import { useEffect, useState } from "react";
+import BarChartSimple from "../components/BarChartSimple";
 import {
   Plus, CheckCircle, ArrowUpRight, ChevronRight,
   Package, Home, Activity, TrendingUp, Clock,
-  Headphones, Wrench, Plug, Shirt, Box,
 } from "lucide-react";
 
-import { TopNav, NavStrip, NAV_ITEMS } from "./TopNav";
-import StatCard from "./StatCard";
-import { CompactItemCard } from "./ItemCard";
-import type { PageName } from "../types";
-import type { StatCardProps as StatCardData } from "./StatCard";
-import { useTheme } from "../theme/ThemeContext";
+import { TopNav, NavStrip } from "../components/TopNav";
+import StatCard from "../components/StatCard";
+import { CompactItemCard } from "../components/ItemCard";
+import type { Item, PageName } from "../types";
+import type { StatCardProps as StatCardData } from "../components/StatCard";
+import { toDisplayItem } from "../data/items";
+import { getRecentItems } from "../services/api";
 
 /* ── Dashboard-specific data ─────────────────────────────────────── */
 
@@ -40,15 +40,6 @@ const recentActivity = [
   { action: "Added", item: "Winter Jacket", location: "Closet", time: "2 days ago", Icon: Plus, color: "text-emerald-600 bg-emerald-50" },
 ];
 
-const recentlyAddedItems = [
-  { id: 1, name: "Sony WH-1000XM5 Headphones", room: "Bedroom", category: "Electronics", qty: 1, Icon: Headphones, iconBg: "bg-blue-50", iconColor: "text-blue-600" },
-  { id: 2, name: "Tool Kit (20-Piece Set)", room: "Garage", category: "Tools", qty: 1, Icon: Wrench, iconBg: "bg-amber-50", iconColor: "text-amber-600" },
-  { id: 3, name: "HDMI 2.1 Cable 6ft", room: "Office", category: "Cables", qty: 3, Icon: Plug, iconBg: "bg-purple-50", iconColor: "text-purple-600" },
-  { id: 4, name: "Winter Jacket — North Face", room: "Closet", category: "Clothing", qty: 1, Icon: Shirt, iconBg: "bg-pink-50", iconColor: "text-pink-600" },
-  { id: 5, name: "USB-C 8-in-1 Hub", room: "Office", category: "Electronics", qty: 2, Icon: Box, iconBg: "bg-indigo-50", iconColor: "text-indigo-600" },
-  { id: 6, name: "Ninja Air Fryer 5.5qt", room: "Kitchen", category: "Appliances", qty: 1, Icon: Package, iconBg: "bg-orange-50", iconColor: "text-orange-600" },
-];
-
 const stats: StatCardData[] = [
   { label: "Total Items", value: "248", Icon: Package, sub: "+12 this month", iconBg: "bg-blue-50", iconColor: "text-blue-600", trend: "up" },
   { label: "Estimated Value", value: "$12,430", Icon: TrendingUp, sub: "+$320 this month", iconBg: "bg-emerald-50", iconColor: "text-emerald-600", trend: "up" },
@@ -61,20 +52,45 @@ const stats: StatCardData[] = [
 /* ── Component ───────────────────────────────────────────────────── */
 
 export interface DashboardPageProps {
+  userId: string;
+  displayName: string;
   onSignOut: () => void;
   onNavigate: (page: PageName, query?: string) => void;
-  onItemSelect?: (id: number) => void;
+  onItemSelect?: (item: Item) => void;
   onSettings?: () => void;
 }
 
 export default function DashboardPage({
+  userId,
+  displayName,
   onSignOut,
   onNavigate,
   onItemSelect,
   onSettings,
 }: DashboardPageProps) {
-  const { tokens } = useTheme();
   const [activeNav, setActiveNav] = useState("inventory");
+  const [recentlyAddedItems, setRecentlyAddedItems] = useState<Item[]>([]);
+  const [recentItemsLoading, setRecentItemsLoading] = useState(true);
+  const [recentItemsError, setRecentItemsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setRecentItemsLoading(true);
+    setRecentItemsError(null);
+
+    getRecentItems(userId, 6)
+      .then((items) => {
+        if (active) setRecentlyAddedItems(items.map(toDisplayItem));
+      })
+      .catch((requestError) => {
+        if (active) setRecentItemsError(requestError instanceof Error ? requestError.message : "Unable to load recent items.");
+      })
+      .finally(() => {
+        if (active) setRecentItemsLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [userId]);
 
   function handleNavSelect(id: string) {
     setActiveNav(id);
@@ -113,7 +129,7 @@ export default function DashboardPage({
               className="text-[28px] font-bold text-foreground leading-tight"
               style={{ letterSpacing: "-0.03em", fontFamily: "'Instrument Serif', serif" }}
             >
-              Welcome back, Sarah
+              Welcome back, {displayName || "there"}
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
               {"Here's a quick overview of your home inventory."}
@@ -127,7 +143,7 @@ export default function DashboardPage({
               <Package size={14} />
               View Inventory
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors shadow-sm">
+            <button onClick={() => onNavigate("addItem")} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors shadow-sm">
               <Plus size={14} />
               Add Item
             </button>
@@ -228,7 +244,7 @@ export default function DashboardPage({
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-base font-semibold text-foreground">Recently Added Items</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Logged in the past 30 days</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Your 6 most recently logged items</p>
             </div>
             <button
               onClick={() => onNavigate("allItems")}
@@ -238,12 +254,22 @@ export default function DashboardPage({
             </button>
           </div>
 
+          {(recentItemsLoading || recentItemsError) && (
+            <div className={`mb-4 px-4 py-3 rounded-xl border text-sm ${recentItemsError ? "bg-red-50 border-red-200 text-red-700" : "bg-muted/40 border-border text-muted-foreground"}`}>
+              {recentItemsError ?? "Loading recently added items…"}
+            </div>
+          )}
+          {!recentItemsLoading && !recentItemsError && recentlyAddedItems.length === 0 && (
+            <div className="mb-4 px-4 py-6 rounded-xl border border-border text-sm text-center text-muted-foreground">
+              No items have been added yet.
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-4 xl:grid-cols-6">
             {recentlyAddedItems.map((item) => (
               <CompactItemCard
                 key={item.id}
                 {...item}
-                onClick={() => onItemSelect?.(item.id)}
+                onClick={() => onItemSelect?.(item)}
               />
             ))}
           </div>

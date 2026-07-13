@@ -22,7 +22,7 @@ export interface IconProps {
 export type IconComponent = ComponentType<IconProps>;
 
 export interface Item {
-  id: number;
+  id: string | number;
   name: string;
   category: string;
   room: string;

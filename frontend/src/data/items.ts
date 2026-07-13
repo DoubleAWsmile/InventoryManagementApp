@@ -3,6 +3,7 @@ import {
   Zap, Dumbbell, Coffee, Hammer, Home, Heart,
 } from "lucide-react";
 import type { Item } from "../types";
+import type { ApiItem } from "../services/api";
 
 export const CATEGORY_COLORS: Record<string, string> = {
   Electronics: "bg-blue-50 text-blue-700 border-blue-200",
@@ -25,6 +26,61 @@ export const TAG_COLORS = [
 ];
 
 export const PAGE_SIZE = 12;
+
+const CATEGORY_ICONS = {
+  Electronics: Headphones,
+  Tools: Wrench,
+  Clothing: Shirt,
+  Cables: Plug,
+  Safety: Shield,
+  Household: Battery,
+  Fitness: Dumbbell,
+  Appliances: Coffee,
+  Outdoor: Home,
+} as const;
+
+const CATEGORY_ICON_STYLES: Record<string, { iconBg: string; iconColor: string }> = {
+  Electronics: { iconBg: "bg-blue-50", iconColor: "text-blue-600" },
+  Tools: { iconBg: "bg-amber-50", iconColor: "text-amber-600" },
+  Clothing: { iconBg: "bg-pink-50", iconColor: "text-pink-600" },
+  Cables: { iconBg: "bg-purple-50", iconColor: "text-purple-600" },
+  Safety: { iconBg: "bg-red-50", iconColor: "text-red-500" },
+  Household: { iconBg: "bg-yellow-50", iconColor: "text-yellow-600" },
+  Fitness: { iconBg: "bg-teal-50", iconColor: "text-teal-600" },
+  Appliances: { iconBg: "bg-orange-50", iconColor: "text-orange-600" },
+  Outdoor: { iconBg: "bg-green-50", iconColor: "text-green-600" },
+};
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+export function toDisplayItem(item: ApiItem): Item {
+  const style = CATEGORY_ICON_STYLES[item.category] ?? {
+    iconBg: "bg-slate-50",
+    iconColor: "text-slate-600",
+  };
+
+  return {
+    id: item.id,
+    name: item.name,
+    category: item.category,
+    room: item.roomLocation,
+    qty: item.quantity,
+    value: item.estimatedValue ?? 0,
+    addedDate: formatDate(item.createdAt),
+    updatedDate: formatDate(item.updatedAt),
+    tags: item.tags ?? [],
+    missingInfo: item.estimatedValue == null || !item.condition || !item.brand,
+    lowStock: item.quantity <= 2,
+    Icon: CATEGORY_ICONS[item.category as keyof typeof CATEGORY_ICONS] ?? Package,
+    ...style,
+  };
+}
 
 export const ALL_ITEMS: Item[] = [
   { id: 1, name: "Sony WH-1000XM5 Headphones", category: "Electronics", room: "Bedroom", qty: 1, value: 279, addedDate: "Jun 2, 2024", updatedDate: "Jun 2, 2024", tags: ["Audio", "Wireless"], missingInfo: false, lowStock: false, Icon: Headphones, iconBg: "bg-blue-50", iconColor: "text-blue-600" },

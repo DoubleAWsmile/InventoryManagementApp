@@ -7,8 +7,9 @@ import {
   Layers,
 } from "lucide-react";
 
-import { TopNav, NavStrip } from "./TopNav";
+import { TopNav, NavStrip } from "../components/TopNav";
 import { ALL_ITEMS, CATEGORY_COLORS } from "../data/items";
+import type { Item } from "../types";
 
 /* ── Sub-components ──────────────────────────────────────────────── */
 
@@ -141,22 +142,24 @@ function FALLBACK_DETAIL(item: any) {
 /* ── Component ───────────────────────────────────────────────────── */
 
 export interface ItemDetailPageProps {
-  itemId: number;
+  itemId: Item["id"];
+  item?: Item;
   onBack: () => void;
   onSignOut: () => void;
-  onItemSelect?: (id: number) => void;
+  onItemSelect?: (item: Item) => void;
   onSettings?: () => void;
 }
 
 export default function ItemDetailPage({
   itemId,
+  item,
   onBack,
   onSignOut,
   onItemSelect,
   onSettings,
 }: ItemDetailPageProps) {
-  const baseItem = ALL_ITEMS.find((i) => i.id === itemId)!;
-  const rawDetail = ITEM_DETAIL_DATA[itemId] ?? FALLBACK_DETAIL(baseItem);
+  const baseItem = item ?? ALL_ITEMS.find((i) => i.id === itemId)!;
+  const rawDetail = (typeof itemId === "number" ? ITEM_DETAIL_DATA[itemId] : undefined) ?? FALLBACK_DETAIL(baseItem);
   const detail = { ...rawDetail, Icon: rawDetail.Icon ?? baseItem?.Icon, iconBg: rawDetail.iconBg ?? baseItem?.iconBg, iconColor: rawDetail.iconColor ?? baseItem?.iconColor };
   const relatedItems = ALL_ITEMS.filter((i) => i.category === detail.category && i.id !== itemId).slice(0, 3);
 
@@ -523,7 +526,7 @@ export default function ItemDetailPage({
                   {relatedItems.map((rel) => (
                     <div
                       key={rel.id}
-                      onClick={() => onItemSelect?.(rel.id)}
+                      onClick={() => onItemSelect?.(rel)}
                       className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted cursor-pointer transition-colors group"
                     >
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${rel.iconBg}`}>
