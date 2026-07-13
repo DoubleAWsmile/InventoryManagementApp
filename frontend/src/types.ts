@@ -23,6 +23,7 @@ export type IconComponent = ComponentType<IconProps>;
 
 export interface Item {
   id: string | number;
+  userId?: string;
   name: string;
   category: string;
   room: string;
@@ -36,6 +37,17 @@ export interface Item {
   Icon: IconComponent;
   iconBg: string;
   iconColor: string;
+  purchaseDate?: string;
+  condition?: string;
+  brand?: string;
+  model?: string;
+  serialNumber?: string;
+  description?: string;
+  notes?: string;
+  photoUrl?: string;
+  photoFilename?: string;
+  photoMimeType?: string;
+  photoSizeBytes?: number;
 }
 
 export interface NavItem {

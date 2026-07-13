@@ -10,6 +10,7 @@ import {
 import { TopNav, NavStrip } from "../components/TopNav";
 import { ALL_ITEMS, CATEGORY_COLORS } from "../data/items";
 import type { Item } from "../types";
+import { deleteItem } from "../services/api";
 
 /* ── Sub-components ──────────────────────────────────────────────── */
 
@@ -75,6 +76,8 @@ const TAG_PALETTE = [
 ];
 
 const CONDITION_STYLE: Record<string, string> = {
+  New: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Like New": "bg-teal-50 text-teal-700 border-teal-200",
   Excellent: "bg-emerald-50 text-emerald-700 border-emerald-200",
   Good: "bg-blue-50 text-blue-700 border-blue-200",
   Fair: "bg-amber-50 text-amber-700 border-amber-200",
@@ -113,18 +116,18 @@ const ITEM_DETAIL_DATA: Record<number, any> = {
 function FALLBACK_DETAIL(item: any) {
   return {
     ...item,
-    condition: "Good",
-    brand: "—",
-    model: "—",
-    serialNumber: "—",
+    condition: item.condition || "Not specified",
+    brand: item.brand || "—",
+    model: item.model || "—",
+    serialNumber: item.serialNumber || "—",
     color: "—",
-    purchaseDate: item.addedDate,
-    purchasePrice: item.value,
+    purchaseDate: item.purchaseDate || "—",
+    purchasePrice: null,
     purchaseStore: "—",
     warrantyExpires: "—",
     warrantyMonthsLeft: 0,
-    description: `${item.name} stored in the ${item.room}. Added to inventory ${item.addedDate}.`,
-    notes: "No notes added yet.",
+    description: item.description || `${item.name} stored in the ${item.room}. Added to inventory ${item.addedDate}.`,
+    notes: item.notes || "No notes added yet.",
     customFields: [{ label: "Color", value: "—" }],
     activity: [
       {
@@ -144,7 +147,9 @@ function FALLBACK_DETAIL(item: any) {
 export interface ItemDetailPageProps {
   itemId: Item["id"];
   item?: Item;
+  userId: string;
   onBack: () => void;
+  onDeleted: () => void;
   onSignOut: () => void;
   onItemSelect?: (item: Item) => void;
   onSettings?: () => void;
@@ -153,7 +158,9 @@ export interface ItemDetailPageProps {
 export default function ItemDetailPage({
   itemId,
   item,
+  userId,
   onBack,
+  onDeleted,
   onSignOut,
   onItemSelect,
   onSettings,
@@ -161,12 +168,16 @@ export default function ItemDetailPage({
   const baseItem = item ?? ALL_ITEMS.find((i) => i.id === itemId)!;
   const rawDetail = (typeof itemId === "number" ? ITEM_DETAIL_DATA[itemId] : undefined) ?? FALLBACK_DETAIL(baseItem);
   const detail = { ...rawDetail, Icon: rawDetail.Icon ?? baseItem?.Icon, iconBg: rawDetail.iconBg ?? baseItem?.iconBg, iconColor: rawDetail.iconColor ?? baseItem?.iconColor };
-  const relatedItems = ALL_ITEMS.filter((i) => i.category === detail.category && i.id !== itemId).slice(0, 3);
+  const relatedItems = typeof itemId === "number"
+    ? ALL_ITEMS.filter((i) => i.category === detail.category && i.id !== itemId).slice(0, 3)
+    : [];
 
   const [tags, setTags] = useState<string[]>(detail.tags ?? []);
   const [addingTag, setAddingTag] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [activePhoto, setActivePhoto] = useState(0);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesVal, setNotesVal] = useState(detail.notes ?? "");
@@ -178,7 +189,26 @@ export default function ItemDetailPage({
     setAddingTag(false);
   }
 
-  const condStyle = CONDITION_STYLE[detail.condition] ?? CONDITION_STYLE.Good;
+  async function handleDelete() {
+    if (typeof itemId !== "string") {
+      setDeleteError("This sample item is not stored in the database.");
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteItem(itemId, userId);
+      onDeleted();
+    } catch (requestError) {
+      setDeleteError(requestError instanceof Error ? requestError.message : "Unable to delete this item.");
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const condStyle = CONDITION_STYLE[detail.condition] ?? "bg-slate-50 text-slate-700 border-slate-200";
 
   if (!baseItem) {
     return (
@@ -264,7 +294,7 @@ export default function ItemDetailPage({
               <div className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-red-300 bg-red-50">
                 <AlertTriangle size={13} className="text-red-500" />
                 <span className="text-xs font-semibold text-red-600">Sure?</span>
-                <button className="text-xs font-bold text-red-600 hover:text-red-800 px-1">Yes</button>
+                <button onClick={handleDelete} disabled={deleting} className="text-xs font-bold text-red-600 hover:text-red-800 px-1 disabled:opacity-60">{deleting ? "Deleting…" : "Yes"}</button>
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
                   className="text-xs font-bold text-muted-foreground hover:text-foreground px-1"
@@ -276,6 +306,12 @@ export default function ItemDetailPage({
           </div>
         </div>
 
+        {deleteError && (
+          <div className="mb-5 px-4 py-3 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
+            {deleteError}
+          </div>
+        )}
+
         {/* Main 2-col layout */}
         <div className="grid grid-cols-[1fr_340px] gap-6 items-start">
 
@@ -285,14 +321,18 @@ export default function ItemDetailPage({
             {/* Image / Photos card */}
             <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
               <div className={`relative h-72 bg-gradient-to-br ${detail.iconGradient} flex items-center justify-center group`}>
-                <div className="flex flex-col items-center gap-4">
-                  {detail.Icon && (
-                    <div className={`w-24 h-24 rounded-3xl flex items-center justify-center ${detail.iconBg} shadow-lg`}>
-                      <detail.Icon size={48} className={detail.iconColor} />
-                    </div>
-                  )}
-                  <span className="text-xs text-muted-foreground font-medium">No photos added yet</span>
-                </div>
+                {detail.photoUrl ? (
+                  <img src={detail.photoUrl} alt={detail.name} className="w-full h-full object-contain" />
+                ) : (
+                  <div className="flex flex-col items-center gap-4">
+                    {detail.Icon && (
+                      <div className={`w-24 h-24 rounded-3xl flex items-center justify-center ${detail.iconBg} shadow-lg`}>
+                        <detail.Icon size={48} className={detail.iconColor} />
+                      </div>
+                    )}
+                    <span className="text-xs text-muted-foreground font-medium">No photos added yet</span>
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-end justify-end p-4">
                   <button className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 h-8 px-3 rounded-lg bg-white/90 backdrop-blur-sm text-xs font-semibold text-foreground shadow-md hover:bg-white">
                     <Camera size={13} />Add Photo
@@ -300,7 +340,7 @@ export default function ItemDetailPage({
                 </div>
                 <div className="absolute top-4 left-4">
                   <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white/80 backdrop-blur-sm text-muted-foreground shadow-sm">
-                    <Image size={10} className="inline mr-1" />0 photos
+                    <Image size={10} className="inline mr-1" />{detail.photoUrl ? 1 : 0} photo{detail.photoUrl ? "" : "s"}
                   </span>
                 </div>
               </div>
@@ -463,7 +503,7 @@ export default function ItemDetailPage({
             >
               <MetaRow label="Purchase Date" value={detail.purchaseDate} />
               <MetaRow label="Store / Seller" value={detail.purchaseStore} />
-              <MetaRow label="Purchase Price" value={`$${detail.purchasePrice.toLocaleString()}`} accent />
+              <MetaRow label="Purchase Price" value={detail.purchasePrice == null ? "—" : `$${detail.purchasePrice.toLocaleString()}`} accent={detail.purchasePrice != null} />
               <div className="mt-3">
                 <button className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-accent transition-colors">
                   <Receipt size={13} />Attach receipt or invoice

@@ -67,6 +67,7 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(message || `Request failed with status ${response.status}`);
   }
 
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
@@ -97,5 +98,12 @@ export function createItem(payload: CreateItemPayload) {
   return apiRequest<ApiItem>("/api/items", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function deleteItem(itemId: string, userId: string) {
+  const params = new URLSearchParams({ userId });
+  return apiRequest<void>(`/api/items/${encodeURIComponent(itemId)}?${params.toString()}`, {
+    method: "DELETE",
   });
 }

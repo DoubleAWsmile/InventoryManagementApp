@@ -20,6 +20,7 @@ func Setup(userHandler *handlers.UserHandler, itemHandler *handlers.ItemHandler)
 	r.Get("/api/items", itemHandler.GetItems)
 	r.Get("/api/items/recent", itemHandler.GetRecentItems)
 	r.Post("/api/items", itemHandler.CreateItem)
+	r.Delete("/api/items/{itemId}", itemHandler.DeleteItem)
 
 	return r
 }

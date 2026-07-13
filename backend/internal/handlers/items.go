@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/models"
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -243,4 +244,29 @@ func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(item)
+}
+
+func (h *ItemHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
+	itemID := chi.URLParam(r, "itemId")
+	userID := r.URL.Query().Get("userId")
+	if itemID == "" || userID == "" {
+		http.Error(w, "itemId and userId are required", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.DB.Exec(r.Context(), `
+		DELETE FROM items
+		WHERE id = $1 AND user_id = $2
+	`, itemID, userID)
+	if err != nil {
+		http.Error(w, "failed to delete item", http.StatusInternalServerError)
+		return
+	}
+
+	if result.RowsAffected() == 0 {
+		http.Error(w, "item not found", http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

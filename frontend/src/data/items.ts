@@ -67,6 +67,7 @@ export function toDisplayItem(item: ApiItem): Item {
 
   return {
     id: item.id,
+    userId: item.userId,
     name: item.name,
     category: item.category,
     room: item.roomLocation,
@@ -78,6 +79,17 @@ export function toDisplayItem(item: ApiItem): Item {
     missingInfo: item.estimatedValue == null || !item.condition || !item.brand,
     lowStock: item.quantity <= 2,
     Icon: CATEGORY_ICONS[item.category as keyof typeof CATEGORY_ICONS] ?? Package,
+    purchaseDate: item.purchaseDate ? formatDate(item.purchaseDate) : undefined,
+    condition: item.condition,
+    brand: item.brand,
+    model: item.model,
+    serialNumber: item.serialNumber,
+    description: item.description,
+    notes: item.notes,
+    photoUrl: item.photoUrl,
+    photoFilename: item.photoFilename,
+    photoMimeType: item.photoMimeType,
+    photoSizeBytes: item.photoSizeBytes,
     ...style,
   };
 }

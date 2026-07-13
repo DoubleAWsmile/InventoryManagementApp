@@ -73,7 +73,7 @@ function AppRouter() {
     case "allItems":
       return <AllItemsPage userId={currentUser.id} onBack={() => setCurrentPage("dashboard")} onSignOut={signOut} onItemSelect={selectItem} onSettings={() => setCurrentPage("settings")} onNavigate={nav} />;
     case "itemDetail":
-      return <ItemDetailPage itemId={selectedItem.id} item={selectedItem} onBack={() => setCurrentPage("allItems")} onSignOut={signOut} onItemSelect={selectItem} onSettings={() => setCurrentPage("settings")} />;
+      return <ItemDetailPage key={String(selectedItem.id)} itemId={selectedItem.id} item={selectedItem} userId={currentUser.id} onBack={() => setCurrentPage("allItems")} onDeleted={() => setCurrentPage("allItems")} onSignOut={signOut} onItemSelect={selectItem} onSettings={() => setCurrentPage("settings")} />;
     case "rooms":
       return <RoomsPage {...commonProps} />;
     case "categories":
