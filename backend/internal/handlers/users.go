@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/auth"
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/models"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -40,7 +42,12 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if auth.IsStrongEnough(req.Password) {
+	if len(req.DisplayName) > 50 {
+		http.Error(w, "Display name must be 50 characters or fewer", http.StatusBadRequest)
+		return
+	}
+
+	if !auth.IsStrongEnough(req.Password) {
 		const message = "Password must be at least 8 characters, have at least 1 capital letter, and have 1 non-alphanumeric character"
 		http.Error(w, message, http.StatusBadRequest)
 		return
@@ -75,6 +82,12 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			http.Error(w, "An account with this email already exists", http.StatusConflict)
+			return
+		}
+
 		http.Error(w, "Failed to create user", http.StatusInternalServerError)
 		return
 	}
