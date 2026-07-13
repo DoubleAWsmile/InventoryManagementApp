@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/auth"
+	"github.com/DoubleAWsmile/InventoryManagementApp/internal/constants"
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/models"
 )
 
@@ -59,6 +62,66 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, err := auth.GenerateSessionToken()
+	if err != nil {
+		http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		return
+	}
+
+	tokenHash := auth.HashSessionToken(token)
+	expiresAt := time.Now().Add(constants.SessionTimeLimit * time.Hour)
+
+	_, err = h.DB.Exec(r.Context(), `
+		INSERT INTO sessions (user_id, token_hash, expires_at)
+		VALUES ($1, $2, $3)
+	`, user.ID, tokenHash, expiresAt)
+
+	if err != nil {
+		http.Error(w, "Failed to save session", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(models.AuthResponse{
+		User:  user,
+		Token: token,
+	})
+}
+
+func (h *UserHandler) GetCurrentUserFromRequest(r *http.Request) (models.User, error) {
+	token := auth.GetBearerToken(r)
+	if token == "" {
+		return models.User{}, errors.New("missing auth token")
+	}
+
+	tokenHash := auth.HashSessionToken(token)
+
+	var user models.User
+
+	err := h.DB.QueryRow(r.Context(), `
+		SELECT 
+			u.id,
+			u.email,
+			u.display_name,
+			u.created_at,
+			u.updated_at
+		FROM sessions s
+		JOIN users u
+			ON u.id = s.user_id
+		WHERE s.token_hash = $1
+			AND s.revoked_at IS NULL
+			AND s.expires_at > NOW()
+	`, tokenHash).Scan(
+		&user.ID,
+		&user.Email,
+		&user.DisplayName,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	if err != nil {
+		return models.User{}, errors.New("invalid or expired session")
+	}
+
+	return user, nil
 }

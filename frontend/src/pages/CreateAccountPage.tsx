@@ -47,7 +47,7 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
     }
     setLoading(true);
     try {
-      await createUser(email.trim(), fullName.trim());
+      await createUser(email.trim(), fullName.trim(), password.trim());
       onFinished();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "We couldn't create your account yet. Please try again.");
@@ -176,7 +176,7 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
               Create account
             </h1>
             <p className="text-sm text-muted-foreground">
-              Set up your HomeVault profile. You can connect the backend later.
+              Set up your HomeVault account.
             </p>
           </div>
 
@@ -231,7 +231,7 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
 
             <div>
               <label className="block text-sm font-semibold text-foreground mb-1.5">
-                Password <span className="font-normal text-muted-foreground">(not used yet)</span>
+                Password
               </label>
               <div className="relative">
                 <input
@@ -258,7 +258,7 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
 
             <div>
               <label className="block text-sm font-semibold text-foreground mb-1.5">
-                Confirm password <span className="font-normal text-muted-foreground">(not used yet)</span>
+                Confirm password
               </label>
               <input
                 type={showPw ? "text" : "password"}

@@ -15,7 +15,10 @@ func Setup(userHandler *handlers.UserHandler, itemHandler *handlers.ItemHandler)
 	})
 
 	r.Post("/api/users", userHandler.CreateUser)
+	r.Delete("/api/me", userHandler.DeleteMe)
 	r.Post("/api/auth/login", userHandler.Login)
+	r.Post("/api/auth/logout", userHandler.Logout)
+	r.Get("/api/me", userHandler.GetMe)
 
 	r.Get("/api/items", itemHandler.GetItems)
 	r.Get("/api/items/recent", itemHandler.GetRecentItems)

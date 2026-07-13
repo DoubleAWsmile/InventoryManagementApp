@@ -6,6 +6,11 @@ export interface User {
   updatedAt: string;
 }
 
+export interface AuthResponse {
+  user: User;
+  token: string;
+}
+
 export interface ApiItem {
   id: string;
   userId: string;
@@ -71,18 +76,58 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function createUser(email: string, displayName: string) {
+export function createUser(email: string, displayName: string, password: string) {
   return apiRequest<User>("/api/users", {
     method: "POST",
-    body: JSON.stringify({ email, displayName }),
+    body: JSON.stringify({ email, displayName, password }),
   });
 }
 
-export function demoLogin(email: string) {
-  return apiRequest<User>("/api/auth/demo-login", {
-    method: "POST",
-    body: JSON.stringify({ email }),
+export async function deleteMe(email: string, password: string): Promise<void> {
+  const token = localStorage.getItem("sessionToken");
+
+  const response = await fetch(`${API_BASE_URL}/api/me`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ email, password }),
   });
+
+  if (!response.ok) {
+    const message = (await response.text()).trim();
+    throw new Error(message || "Failed to delete account");
+  }
+
+  localStorage.removeItem("sessionToken");
+  localStorage.removeItem("user");
+}
+
+export function login(email: string, password: string) {
+  return apiRequest<AuthResponse>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function logout(): Promise<void> {
+  const token = localStorage.getItem("sessionToken");
+
+  const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const message = (await response.text()).trim();
+    throw new Error(message || "Failed to logout");
+  }
+
+  localStorage.removeItem("sessionToken");
+  localStorage.removeItem("user");
 }
 
 export function getItems(userId: string) {

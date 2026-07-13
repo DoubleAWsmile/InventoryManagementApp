@@ -111,3 +111,106 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(user)
 }
+
+func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
+	user, err := h.GetCurrentUserFromRequest(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
+}
+
+func (h *UserHandler) DeleteMe(w http.ResponseWriter, r *http.Request) {
+	user, err := h.GetCurrentUserFromRequest(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req models.DeleteMeRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	email := strings.TrimSpace(strings.ToLower(req.Email))
+	password := req.Password
+
+	if email == "" || password == "" {
+		http.Error(w, "Email and password are required", http.StatusBadRequest)
+		return
+	}
+
+	if email != strings.ToLower(user.Email) {
+		http.Error(w, "Email does not match current account", http.StatusBadRequest)
+		return
+	}
+
+	var passwordHash string
+
+	err = h.DB.QueryRow(r.Context(), `
+		SELECT password_hash
+		FROM auth_credentials
+		WHERE user_id = $1
+	`, user.ID).Scan(&passwordHash)
+
+	if err != nil {
+		http.Error(w, "Failed to verify account", http.StatusInternalServerError)
+		return
+	}
+
+	if !auth.CheckPassword(password, passwordHash) {
+		http.Error(w, "Invalid password", http.StatusUnauthorized)
+		return
+	}
+
+	result, err := h.DB.Exec(r.Context(), `
+		DELETE FROM users
+		WHERE id = $1
+	`, user.ID)
+
+	if err != nil {
+		http.Error(w, "Failed to delete account", http.StatusInternalServerError)
+		return
+	}
+
+	if result.RowsAffected() == 0 {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	token := auth.GetBearerToken(r)
+	if token == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	tokenHash := auth.HashSessionToken(token)
+
+	result, err := h.DB.Exec(r.Context(), `
+		UPDATE sessions
+		SET revoked_at = NOW()
+		WHERE token_hash = $1
+			AND revoked_at IS NULL
+	`, tokenHash)
+
+	if err != nil {
+		http.Error(w, "Failed to logout", http.StatusInternalServerError)
+		return
+	}
+
+	if result.RowsAffected() == 0 {
+		http.Error(w, "Invalid session", http.StatusUnauthorized)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}

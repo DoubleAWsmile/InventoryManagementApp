@@ -3,7 +3,7 @@ import {
   Eye, EyeOff, AlertCircle, Loader2, Layers, Package, Map, ShieldCheck, Sparkles,
 } from "lucide-react";
 import { Logo } from "../components/TopNav";
-import { demoLogin, type User } from "../services/api";
+import { login, type User } from "../services/api";
 
 export interface LoginPageProps {
   onSuccess: (user: User) => void;
@@ -27,13 +27,19 @@ export default function LoginPage({ onSuccess, onCreateAccount }: LoginPageProps
       setError("Please enter your email to continue.");
       return;
     }
+    if (!password.trim()) {
+      setError("Please enter your password.");
+      return;
+    }
     if (!emailValid) {
       setError("That doesn't look like a valid email address.");
       return;
     }
     setLoading(true);
     try {
-      const user = await demoLogin(email.trim());
+      const { user, token } = await login(email.trim(), password.trim());
+      localStorage.setItem("sessionToken", token);
+      localStorage.setItem("user", JSON.stringify(user));
       onSuccess(user);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "We couldn't sign you in. Please try again.");
@@ -227,7 +233,7 @@ export default function LoginPage({ onSuccess, onCreateAccount }: LoginPageProps
             {/* Password */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-semibold text-foreground">Password <span className="font-normal text-muted-foreground">(not used yet)</span></label>
+                <label className="text-sm font-semibold text-foreground">Password </label>
                 <button type="button" className="text-xs text-accent font-medium hover:underline">
                   Forgot password?
                 </button>

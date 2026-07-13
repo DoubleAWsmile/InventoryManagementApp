@@ -11,6 +11,8 @@ import type { PageName } from "../types";
 import { useTheme } from "../theme/ThemeContext";
 import { useInventoryPrefs } from "../context/InventoryPrefsContext";
 
+import { logout, deleteMe } from "../services/api";
+
 /* ── Sidebar section definitions ─────────────────────────────────── */
 
 type SectionId =
@@ -327,8 +329,58 @@ function AppearanceSection() {
 
 /* ── Section: Account ────────────────────────────────────────────── */
 
-function AccountSection() {
+function AccountSection({ accountEmail, onSignOut, }: {
+  accountEmail: string;
+  onSignOut: () => void;
+}) {
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteEmail, setDeleteEmail] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const canConfirmDelete =
+    deleteEmail.trim().toLowerCase() === accountEmail.trim().toLowerCase()
+    && deletePassword.length > 0;
+
+  function cancelDelete() {
+    setShowDeleteConfirm(false);
+    setDeleteEmail("");
+    setDeletePassword("");
+  }
+
+  async function handleSignOut() {
+    setSignOutError(null);
+    setSigningOut(true);
+
+    try {
+      await logout();
+      onSignOut();
+    } catch (err) {
+      setSignOutError(err instanceof Error ? err.message : "Failed to sign out.");
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
+  async function handleDeleteMe() {
+    if (!canConfirmDelete || deletingAccount) return;
+
+    setDeleteError(null);
+    setDeletingAccount(true);
+
+    try {
+      await deleteMe(deleteEmail.trim(), deletePassword);
+      onSignOut();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete account.");
+    } finally {
+      setDeletingAccount(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -372,7 +424,7 @@ function AccountSection() {
                   <div className="relative">
                     <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <input
-                      defaultValue="sarah.reynolds@gmail.com"
+                      defaultValue={accountEmail}
                       type="email"
                       className="w-full h-9 pl-8 pr-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent/50 transition-all"
                     />
@@ -434,10 +486,105 @@ function AccountSection() {
       <Card className="border-red-200/60">
         <CardSection title="Session">
           <SettingRow label="Sign Out" desc="Sign out of HomeVault on this device">
-            <button className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors">
-              <LogOut size={11} />Sign Out
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <LogOut size={11} />
+              {signingOut ? "Signing Out..." : "Sign Out"}
             </button>
           </SettingRow>
+
+          {signOutError && (
+            <p className="pb-4 text-xs text-red-600">{signOutError}</p>
+          )}
+        </CardSection>
+      </Card>
+
+      {/* Danger zone */}
+      <Card className="border-red-200/70">
+        <CardSection title="Danger Zone">
+          {!showDeleteConfirm ? (
+            <SettingRow
+              label="Delete Account"
+              desc="Permanently delete your HomeVault account and all data. This action cannot be undone."
+            >
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors"
+              >
+                <Trash2 size={11} />Delete Account
+              </button>
+            </SettingRow>
+          ) : (
+            <div className="py-4">
+              <div className="flex items-start gap-3 mb-4 p-3 rounded-xl bg-red-50 border border-red-200">
+                <AlertTriangle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-red-700">Are you sure you want to delete your account?</p>
+                  <p className="text-xs text-red-600/80 mt-0.5">
+                    Enter your account email and password to confirm. This cannot be undone.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="delete-account-email" className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                    Email Address
+                  </label>
+                  <input
+                    id="delete-account-email"
+                    autoFocus
+                    type="email"
+                    autoComplete="email"
+                    value={deleteEmail}
+                    onChange={(e) => setDeleteEmail(e.target.value)}
+                    placeholder={accountEmail}
+                    className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="delete-account-password" className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                    Password
+                  </label>
+                  <input
+                    id="delete-account-password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-300 transition-all"
+                  />
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={!canConfirmDelete || deletingAccount}
+                    onClick={handleDeleteMe}
+                    className="h-8 px-4 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-red-600"
+                  >
+                    {deletingAccount ? "Deleting..." : "Confirm Delete"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={cancelDelete}
+                    className="h-8 px-3.5 rounded-lg border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {deleteError && (
+                  <p className="text-xs text-red-600 pt-1">{deleteError}</p>
+                )}
+              </div>
+            </div>
+          )}
         </CardSection>
       </Card>
     </div>
@@ -593,8 +740,6 @@ function NotificationsSection() {
 /* ── Section: Privacy & Data ─────────────────────────────────────── */
 
 function PrivacySection() {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
   return (
     <div className="space-y-5">
       <SectionHeader title="Privacy & Data" desc="Control your data, export records, and manage your account." />
@@ -619,30 +764,6 @@ function PrivacySection() {
         </CardSection>
       </Card>
 
-      <Card className="border-red-200/70">
-        <CardSection title="Danger Zone">
-          <SettingRow
-            label="Delete Account"
-            desc="Permanently delete your HomeVault account and all data. This action cannot be undone."
-          >
-            {!showDeleteConfirm ? (
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors"
-              >
-                <Trash2 size={11} />Delete Account
-              </button>
-            ) : (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200">
-                <AlertTriangle size={12} className="text-red-500" />
-                <span className="text-xs font-semibold text-red-600">Are you sure?</span>
-                <button className="text-xs font-bold text-red-700 hover:text-red-900 px-1 hover:underline">Yes, delete</button>
-                <button onClick={() => setShowDeleteConfirm(false)} className="text-xs font-bold text-muted-foreground hover:text-foreground px-1">Cancel</button>
-              </div>
-            )}
-          </SettingRow>
-        </CardSection>
-      </Card>
     </div>
   );
 }
@@ -886,16 +1007,17 @@ function AdvancedSection() {
 /* ── Main Settings Page ──────────────────────────────────────────── */
 
 export interface SettingsPageProps {
+  userEmail: string;
   onSignOut: () => void;
   onNavigate: (page: PageName) => void;
 }
 
-export default function SettingsPage({ onSignOut, onNavigate }: SettingsPageProps) {
+export default function SettingsPage({ userEmail, onSignOut, onNavigate }: SettingsPageProps) {
   const [activeSection, setActiveSection] = useState<SectionId>("appearance");
 
   const sectionContent: Record<SectionId, React.ReactNode> = {
     appearance: <AppearanceSection />,
-    account: <AccountSection />,
+    account: <AccountSection accountEmail={userEmail} onSignOut={onSignOut} />,
     inventory: <InventorySection />,
     notifications: <NotificationsSection />,
     privacy: <PrivacySection />,

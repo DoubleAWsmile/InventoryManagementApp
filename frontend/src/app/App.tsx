@@ -69,7 +69,7 @@ function AppRouter() {
 
   switch (currentPage) {
     case "settings":
-      return <SettingsPage onSignOut={signOut} onNavigate={(p) => nav(p)} />;
+      return <SettingsPage userEmail={currentUser.email} onSignOut={signOut} onNavigate={(p) => nav(p)} />;
     case "allItems":
       return <AllItemsPage userId={currentUser.id} onBack={() => setCurrentPage("dashboard")} onSignOut={signOut} onItemSelect={selectItem} onSettings={() => setCurrentPage("settings")} onNavigate={nav} />;
     case "itemDetail":
