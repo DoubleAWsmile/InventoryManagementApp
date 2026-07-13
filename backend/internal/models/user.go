@@ -13,8 +13,10 @@ type User struct {
 type CreateUserRequest struct {
 	Email       string `json:"email"`
 	DisplayName string `json:"displayName"`
+	Password    string `json:"password"`
 }
 
-type DemoLoginRequest struct {
-	Email string `json:"email"`
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }

@@ -15,7 +15,7 @@ func Setup(userHandler *handlers.UserHandler, itemHandler *handlers.ItemHandler)
 	})
 
 	r.Post("/api/users", userHandler.CreateUser)
-	r.Post("/api/auth/demo-login", userHandler.DemoLogin)
+	r.Post("/api/auth/login", userHandler.Login)
 
 	r.Get("/api/items", itemHandler.GetItems)
 	r.Get("/api/items/recent", itemHandler.GetRecentItems)
