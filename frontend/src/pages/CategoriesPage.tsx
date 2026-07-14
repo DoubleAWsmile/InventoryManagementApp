@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Plus, ChevronRight, Eye, Tag, TrendingUp, Package, AlertCircle,
   Cpu, Wrench, Shirt, FileText, Cable, Shield, ShoppingBag, Armchair,
@@ -8,6 +8,7 @@ import { TopNav, NavStrip } from "../components/TopNav";
 import type { PageName } from "../types";
 import { NAV_ID_TO_PAGE, PAGE_TO_NAV_ID } from "../utils/nav";
 import { useTheme } from "../theme/ThemeContext";
+import { createCategory, getCategories } from "../services/api";
 
 interface Category {
   id: string;
@@ -21,7 +22,7 @@ interface Category {
   barColor: string;
 }
 
-const CATEGORIES: Category[] = [
+const CATEGORY_STYLES = [
   { id: "electronics", name: "Electronics", items: 34, value: 5200, topRoom: "Office", Icon: Cpu, iconBg: "bg-blue-50", iconColor: "text-blue-600", barColor: "#3B82F6" },
   { id: "tools", name: "Tools", items: 28, value: 1760, topRoom: "Garage", Icon: Wrench, iconBg: "bg-amber-50", iconColor: "text-amber-600", barColor: "#F59E0B" },
   { id: "clothing", name: "Clothing", items: 18, value: 890, topRoom: "Bedroom", Icon: Shirt, iconBg: "bg-pink-50", iconColor: "text-pink-600", barColor: "#EC4899" },
@@ -42,13 +43,39 @@ export default function CategoriesPage({ onSignOut, onNavigate, onSettings }: Ca
   const { tokens } = useTheme();
   const [selected, setSelected] = useState<string | null>(null);
   const [showAddCategory, setShowAddCategory] = useState(false);
+	const [categories, setCategories] = useState<Category[]>([]);
+	const [categoryName, setCategoryName] = useState("");
+	const [saving, setSaving] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-  const totalItems = CATEGORIES.reduce((s, c) => s + c.items, 0);
-  const totalValue = CATEGORIES.reduce((s, c) => s + c.value, 0);
-  const topCat = CATEGORIES.reduce((a, b) => (a.value > b.value ? a : b));
-  const detail = selected ? CATEGORIES.find((c) => c.id === selected) : null;
+	const loadCategories = () => getCategories()
+		.then((data) => setCategories(data.map((category, index) => ({
+			...CATEGORY_STYLES[index % CATEGORY_STYLES.length],
+			id: category.id, name: category.name, items: category.itemCount,
+			value: category.estimatedValue, topRoom: category.topRoom || "—",
+		}))))
+		.catch((requestError) => setError(requestError instanceof Error ? requestError.message : "Unable to load categories."));
 
-  const chartData = CATEGORIES.map((c) => ({ name: c.name.split(" ")[0], items: c.items }));
+	useEffect(() => { loadCategories(); }, []);
+
+	const handleCreateCategory = async () => {
+		if (!categoryName.trim()) { setError("Category name is required."); return; }
+		setSaving(true); setError(null);
+		try {
+			await createCategory(categoryName.trim());
+			setCategoryName(""); setShowAddCategory(false);
+			await loadCategories();
+		} catch (requestError) {
+			setError(requestError instanceof Error ? requestError.message : "Unable to create category.");
+		} finally { setSaving(false); }
+	};
+
+  const totalItems = categories.reduce((s, c) => s + c.items, 0);
+  const totalValue = categories.reduce((s, c) => s + c.value, 0);
+  const topCat = categories.reduce<Category | null>((top, category) => !top || category.value > top.value ? category : top, null);
+  const detail = selected ? categories.find((c) => c.id === selected) : null;
+
+  const chartData = categories.map((c) => ({ name: c.name.split(" ")[0], items: c.items }));
 
   return (
     <div className="min-h-screen bg-background text-foreground" style={{ fontFamily: "'Figtree', sans-serif" }}>
@@ -89,8 +116,8 @@ export default function CategoriesPage({ onSignOut, onNavigate, onSettings }: Ca
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "Categories", value: String(CATEGORIES.length), sub: "Active", Icon: Tag, iconBg: "bg-violet-50", iconColor: "text-violet-600" },
-            { label: "Top by Value", value: topCat.name, sub: `$${topCat.value.toLocaleString()}`, Icon: TrendingUp, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
+            { label: "Categories", value: String(categories.length), sub: "Active", Icon: Tag, iconBg: "bg-violet-50", iconColor: "text-violet-600" },
+            { label: "Top by Value", value: topCat?.name ?? "—", sub: topCat ? `$${topCat.value.toLocaleString()}` : "No data", Icon: TrendingUp, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
             { label: "Total Items", value: String(totalItems), sub: "Across all categories", Icon: Package, iconBg: "bg-blue-50", iconColor: "text-blue-600" },
             { label: "Est. Total Value", value: `$${totalValue.toLocaleString()}`, sub: "All categories", Icon: AlertCircle, iconBg: "bg-amber-50", iconColor: "text-amber-600" },
           ].map((s) => (
@@ -120,7 +147,7 @@ export default function CategoriesPage({ onSignOut, onNavigate, onSettings }: Ca
 
             {/* Cards grid */}
             <div className="grid grid-cols-2 gap-4 xl:grid-cols-3 2xl:grid-cols-4">
-              {CATEGORIES.map((cat) => {
+              {categories.map((cat) => {
                 const isSelected = selected === cat.id;
                 return (
                   <div
@@ -178,7 +205,7 @@ export default function CategoriesPage({ onSignOut, onNavigate, onSettings }: Ca
                   </tr>
                 </thead>
                 <tbody>
-                  {CATEGORIES.map((cat, i) => (
+                  {categories.map((cat) => (
                     <tr
                       key={cat.id}
                       onClick={() => setSelected(selected === cat.id ? null : cat.id)}
@@ -240,6 +267,7 @@ export default function CategoriesPage({ onSignOut, onNavigate, onSettings }: Ca
         </div>
       </main>
 
+      {error && <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
       {showAddCategory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowAddCategory(false)}>
           <div className="bg-card rounded-2xl border border-border shadow-xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
@@ -247,11 +275,11 @@ export default function CategoriesPage({ onSignOut, onNavigate, onSettings }: Ca
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Category Name</label>
-                <input placeholder="e.g. Sports Equipment" className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent/50 transition-all" />
+                <input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} placeholder="e.g. Sports Equipment" className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent/50 transition-all" />
               </div>
             </div>
             <div className="flex gap-2 mt-5">
-              <button className="flex-1 h-9 rounded-xl bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent/90 transition-colors">Save Category</button>
+              <button onClick={handleCreateCategory} disabled={saving} className="flex-1 h-9 rounded-xl bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent/90 transition-colors disabled:opacity-60">{saving ? "Saving…" : "Save Category"}</button>
               <button onClick={() => setShowAddCategory(false)} className="flex-1 h-9 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors">Cancel</button>
             </div>
           </div>

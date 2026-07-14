@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ChevronRight, Upload, Plus, X, Package, Tag,
   ChevronDown, CheckCircle2,
@@ -6,10 +6,8 @@ import {
 import { TopNav, NavStrip } from "../components/TopNav";
 import type { PageName } from "../types";
 import { NAV_ID_TO_PAGE, PAGE_TO_NAV_ID } from "../utils/nav";
-import { createItem } from "../services/api";
+import { createItem, getItemOptions, type ItemOption } from "../services/api";
 
-const CATEGORIES = ["Electronics", "Tools", "Clothing", "Documents", "Cables", "Safety", "Household Supplies", "Furniture"];
-const ROOMS = ["Bedroom", "Office", "Garage", "Kitchen", "Living Room", "Closet", "Utility Room", "Hall Closet"];
 const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"];
 const SUGGESTED_TAGS = ["Warranty", "Expensive", "Frequently Used", "Travel", "Fragile", "Insured", "Gift", "Seasonal"];
 
@@ -46,6 +44,19 @@ export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddIt
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+	const [categories, setCategories] = useState<ItemOption[]>([]);
+	const [rooms, setRooms] = useState<ItemOption[]>([]);
+
+	useEffect(() => {
+		getItemOptions()
+			.then((options) => {
+				setCategories(options.categories);
+				setRooms(options.rooms);
+			})
+			.catch((requestError) => {
+				setError(requestError instanceof Error ? requestError.message : "Unable to load categories and rooms.");
+			});
+	}, []);
 
   const set = (field: keyof FormState, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -80,8 +91,8 @@ export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddIt
     try {
       await createItem({
         name: form.name.trim(),
-        category: form.category,
-        roomLocation: form.room,
+        categoryId: form.category,
+        roomId: form.room,
         quantity,
         estimatedValue,
         purchaseDate: form.purchaseDate ? new Date(`${form.purchaseDate}T00:00:00`).toISOString() : null,
@@ -172,7 +183,7 @@ export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddIt
                         className="w-full h-10 pl-3 pr-8 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent/50 appearance-none transition-all"
                       >
                         <option value="">Select category…</option>
-                        {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                        {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
                       </select>
                       <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     </div>
@@ -186,7 +197,7 @@ export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddIt
                         className="w-full h-10 pl-3 pr-8 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent/50 appearance-none transition-all"
                       >
                         <option value="">Select room…</option>
-                        {ROOMS.map((r) => <option key={r}>{r}</option>)}
+                        {rooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}
                       </select>
                       <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     </div>
@@ -372,7 +383,9 @@ export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddIt
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-foreground truncate">{form.name || "Item Name"}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{form.category || "No category"} · {form.room || "No room"}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {categories.find((category) => category.id === form.category)?.name || "No category"} · {rooms.find((room) => room.id === form.room)?.name || "No room"}
+                </p>
               </div>
             </div>
             <div className="space-y-2 mb-4">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Home, Plus, ChevronRight, Settings2, Eye, Package,
   Pencil, TrendingUp, AlertCircle, Layers, Bed,
@@ -7,12 +7,14 @@ import {
 import { TopNav, NavStrip } from "../components/TopNav";
 import type { PageName } from "../types";
 import { NAV_ID_TO_PAGE, PAGE_TO_NAV_ID } from "../utils/nav";
+import { createRoom, getRooms } from "../services/api";
 
 /* ── Room data ───────────────────────────────────────────────────── */
 
 interface Room {
   id: string;
   name: string;
+	description: string;
   items: number;
   value: number;
   recentItem: string;
@@ -22,7 +24,7 @@ interface Room {
   iconColor: string;
 }
 
-const ROOMS: Room[] = [
+const ROOM_STYLES = [
   { id: "bedroom", name: "Bedroom", items: 38, value: 2840, recentItem: "Sony WH-1000XM5 Headphones", missingInfo: false, Icon: Bed, iconBg: "bg-pink-50", iconColor: "text-pink-600" },
   { id: "office", name: "Office", items: 34, value: 4120, recentItem: "USB-C 8-in-1 Hub", missingInfo: false, Icon: Layers, iconBg: "bg-blue-50", iconColor: "text-blue-600" },
   { id: "garage", name: "Garage", items: 41, value: 1960, recentItem: "Power Drill — DeWalt 20V", missingInfo: true, Icon: Car, iconBg: "bg-amber-50", iconColor: "text-amber-600" },
@@ -44,13 +46,41 @@ export interface RoomsPageProps {
 export default function RoomsPage({ onSignOut, onNavigate, onSettings }: RoomsPageProps) {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [showAddRoom, setShowAddRoom] = useState(false);
+	const [rooms, setRooms] = useState<Room[]>([]);
+	const [roomName, setRoomName] = useState("");
+	const [roomDescription, setRoomDescription] = useState("");
+	const [saving, setSaving] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-  const totalItems = ROOMS.reduce((s, r) => s + r.items, 0);
-  const totalValue = ROOMS.reduce((s, r) => s + r.value, 0);
-  const mostUsed = ROOMS.reduce((a, b) => (a.items > b.items ? a : b));
-  const roomsWithIssues = ROOMS.filter((r) => r.missingInfo).length;
+	const loadRooms = () => getRooms()
+		.then((data) => setRooms(data.map((room, index) => ({
+			...ROOM_STYLES[index % ROOM_STYLES.length],
+			id: room.id, name: room.name, description: room.description,
+			items: room.itemCount, value: room.estimatedValue,
+			recentItem: room.recentItem || "No items yet", missingInfo: room.missingInfo,
+		}))))
+		.catch((requestError) => setError(requestError instanceof Error ? requestError.message : "Unable to load rooms."));
 
-  const detail = selectedRoom ? ROOMS.find((r) => r.id === selectedRoom) : null;
+	useEffect(() => { loadRooms(); }, []);
+
+	const handleCreateRoom = async () => {
+		if (!roomName.trim()) { setError("Room name is required."); return; }
+		setSaving(true); setError(null);
+		try {
+			await createRoom(roomName.trim(), roomDescription.trim());
+			setRoomName(""); setRoomDescription(""); setShowAddRoom(false);
+			await loadRooms();
+		} catch (requestError) {
+			setError(requestError instanceof Error ? requestError.message : "Unable to create room.");
+		} finally { setSaving(false); }
+	};
+
+  const totalItems = rooms.reduce((s, r) => s + r.items, 0);
+  const totalValue = rooms.reduce((s, r) => s + r.value, 0);
+  const mostUsed = rooms.reduce<Room | null>((top, room) => !top || room.items > top.items ? room : top, null);
+  const roomsWithIssues = rooms.filter((r) => r.missingInfo).length;
+
+  const detail = selectedRoom ? rooms.find((r) => r.id === selectedRoom) : null;
 
   return (
     <div className="min-h-screen bg-background text-foreground" style={{ fontFamily: "'Figtree', sans-serif" }}>
@@ -88,8 +118,8 @@ export default function RoomsPage({ onSignOut, onNavigate, onSettings }: RoomsPa
         {/* Stats row */}
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "Total Rooms", value: String(ROOMS.length), sub: "All active", Icon: Home, iconBg: "bg-violet-50", iconColor: "text-violet-600" },
-            { label: "Most Items", value: mostUsed.name, sub: `${mostUsed.items} items`, Icon: TrendingUp, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
+            { label: "Total Rooms", value: String(rooms.length), sub: "All active", Icon: Home, iconBg: "bg-violet-50", iconColor: "text-violet-600" },
+            { label: "Most Items", value: mostUsed?.name ?? "—", sub: mostUsed ? `${mostUsed.items} items` : "No data", Icon: TrendingUp, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
             { label: "Rooms with Issues", value: String(roomsWithIssues), sub: "Missing info", Icon: AlertCircle, iconBg: "bg-amber-50", iconColor: "text-amber-600" },
             { label: "Total Items", value: String(totalItems), sub: `$${totalValue.toLocaleString()} value`, Icon: Package, iconBg: "bg-blue-50", iconColor: "text-blue-600" },
           ].map((s) => (
@@ -111,7 +141,7 @@ export default function RoomsPage({ onSignOut, onNavigate, onSettings }: RoomsPa
 
           {/* Room cards grid */}
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-3 2xl:grid-cols-4 content-start">
-            {ROOMS.map((room) => {
+            {rooms.map((room) => {
               const isSelected = selectedRoom === room.id;
               return (
                 <div
@@ -233,6 +263,7 @@ export default function RoomsPage({ onSignOut, onNavigate, onSettings }: RoomsPa
         </div>
 
         {/* Add Room modal hint */}
+        {error && <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
         {showAddRoom && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowAddRoom(false)}>
             <div className="bg-card rounded-2xl border border-border shadow-xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
@@ -240,15 +271,15 @@ export default function RoomsPage({ onSignOut, onNavigate, onSettings }: RoomsPa
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Room Name</label>
-                  <input placeholder="e.g. Guest Bedroom" className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent/50 transition-all" />
+                  <input value={roomName} onChange={(event) => setRoomName(event.target.value)} placeholder="e.g. Guest Bedroom" className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent/50 transition-all" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Description (optional)</label>
-                  <input placeholder="A short note about this space" className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent/50 transition-all" />
+                  <input value={roomDescription} onChange={(event) => setRoomDescription(event.target.value)} placeholder="A short note about this space" className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent/50 transition-all" />
                 </div>
               </div>
               <div className="flex gap-2 mt-5">
-                <button className="flex-1 h-9 rounded-xl bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent/90 transition-colors">Save Room</button>
+                <button onClick={handleCreateRoom} disabled={saving} className="flex-1 h-9 rounded-xl bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent/90 transition-colors disabled:opacity-60">{saving ? "Saving…" : "Save Room"}</button>
                 <button onClick={() => setShowAddRoom(false)} className="flex-1 h-9 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors">Cancel</button>
               </div>
             </div>

@@ -5,7 +5,9 @@ import "time"
 type Item struct {
 	ID             string     `json:"id"`
 	Name           string     `json:"name"`
+	CategoryID     string     `json:"categoryId"`
 	Category       string     `json:"category"`
+	RoomID         string     `json:"roomId"`
 	RoomLocation   string     `json:"roomLocation"`
 	Quantity       int        `json:"quantity"`
 	EstimatedValue *float64   `json:"estimatedValue,omitempty"`
@@ -27,8 +29,8 @@ type Item struct {
 
 type CreateItemRequest struct {
 	Name           string     `json:"name"`
-	Category       string     `json:"category"`
-	RoomLocation   string     `json:"roomLocation"`
+	CategoryID     string     `json:"categoryId"`
+	RoomID         string     `json:"roomId"`
 	Quantity       int        `json:"quantity"`
 	EstimatedValue *float64   `json:"estimatedValue"`
 	PurchaseDate   *time.Time `json:"purchaseDate"`

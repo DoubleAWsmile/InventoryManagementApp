@@ -19,11 +19,17 @@ func Setup(userHandler *handlers.UserHandler, itemHandler *handlers.ItemHandler)
 	r.Post("/api/auth/login", userHandler.Login)
 	r.Post("/api/auth/logout", userHandler.Logout)
 	r.Get("/api/me", userHandler.GetMe)
+	r.Get("/api/dashboard", itemHandler.GetDashboard)
 
 	r.Get("/api/items", itemHandler.GetItems)
 	r.Get("/api/items/recent", itemHandler.GetRecentItems)
+	r.Get("/api/items/options", itemHandler.GetItemOptions)
 	r.Post("/api/items", itemHandler.CreateItem)
 	r.Delete("/api/items/{itemId}", itemHandler.DeleteItem)
+	r.Get("/api/categories", itemHandler.GetCategories)
+	r.Post("/api/categories", itemHandler.CreateCategory)
+	r.Get("/api/rooms", itemHandler.GetRooms)
+	r.Post("/api/rooms", itemHandler.CreateRoom)
 
 	return r
 }

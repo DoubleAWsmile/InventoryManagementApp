@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/models"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -14,8 +16,60 @@ type ItemHandler struct {
 	DB *pgxpool.Pool
 }
 
+type itemOption struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type itemOptionsResponse struct {
+	Categories []itemOption `json:"categories"`
+	Rooms      []itemOption `json:"rooms"`
+}
+
 func NewItemHandler(db *pgxpool.Pool) *ItemHandler {
 	return &ItemHandler{DB: db}
+}
+
+func (h *ItemHandler) GetItemOptions(w http.ResponseWriter, r *http.Request) {
+	user, err := getCurrentUserFromRequest(h.DB, r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	response := itemOptionsResponse{Categories: []itemOption{}, Rooms: []itemOption{}}
+	rows, err := h.DB.Query(r.Context(), `
+		SELECT 'category', id, name FROM categories WHERE user_id = $1
+		UNION ALL
+		SELECT 'room', id, name FROM rooms WHERE user_id = $1
+		ORDER BY 1, 3
+	`, user.ID)
+	if err != nil {
+		http.Error(w, "failed to fetch item options", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var kind string
+		var option itemOption
+		if err := rows.Scan(&kind, &option.ID, &option.Name); err != nil {
+			http.Error(w, "failed to scan item option", http.StatusInternalServerError)
+			return
+		}
+		if kind == "category" {
+			response.Categories = append(response.Categories, option)
+		} else {
+			response.Rooms = append(response.Rooms, option)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		http.Error(w, "failed to fetch item options", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 func (h *ItemHandler) GetItems(w http.ResponseWriter, r *http.Request) {
@@ -26,13 +80,16 @@ func (h *ItemHandler) GetItems(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, name, category, room_location, quantity,
+		SELECT i.id, i.name, COALESCE(i.category_id::text, ''), COALESCE(c.name, ''),
+		       COALESCE(i.room_id::text, ''), COALESCE(r.name, ''), i.quantity,
 		       estimated_value, purchase_date, condition, brand, model,
 		       serial_number, description, notes, photo_url, photo_filename,
-		       photo_mime_type, photo_size_bytes, tags, created_at, updated_at
-		FROM items
-		WHERE user_id = $1
-		ORDER BY created_at DESC
+		       photo_mime_type, photo_size_bytes, tags, i.created_at, i.updated_at
+		FROM items i
+		LEFT JOIN categories c ON c.id = i.category_id
+		LEFT JOIN rooms r ON r.id = i.room_id
+		WHERE i.user_id = $1
+		ORDER BY i.created_at DESC
 	`, user.ID)
 
 	if err != nil {
@@ -49,7 +106,9 @@ func (h *ItemHandler) GetItems(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(
 			&item.ID,
 			&item.Name,
+			&item.CategoryID,
 			&item.Category,
+			&item.RoomID,
 			&item.RoomLocation,
 			&item.Quantity,
 			&item.EstimatedValue,
@@ -97,13 +156,16 @@ func (h *ItemHandler) GetRecentItems(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, name, category, room_location, quantity,
+		SELECT i.id, i.name, COALESCE(i.category_id::text, ''), COALESCE(c.name, ''),
+		       COALESCE(i.room_id::text, ''), COALESCE(r.name, ''), i.quantity,
 		       estimated_value, purchase_date, condition, brand, model,
 		       serial_number, description, notes, photo_url, photo_filename,
-		       photo_mime_type, photo_size_bytes, tags, created_at, updated_at
-		FROM items
-		WHERE user_id = $1
-		ORDER BY created_at DESC
+		       photo_mime_type, photo_size_bytes, tags, i.created_at, i.updated_at
+		FROM items i
+		LEFT JOIN categories c ON c.id = i.category_id
+		LEFT JOIN rooms r ON r.id = i.room_id
+		WHERE i.user_id = $1
+		ORDER BY i.created_at DESC
 		LIMIT $2
 	`, user.ID, limit)
 
@@ -121,7 +183,9 @@ func (h *ItemHandler) GetRecentItems(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(
 			&item.ID,
 			&item.Name,
+			&item.CategoryID,
 			&item.Category,
+			&item.RoomID,
 			&item.RoomLocation,
 			&item.Quantity,
 			&item.EstimatedValue,
@@ -167,8 +231,8 @@ func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Name == "" || req.Category == "" || req.RoomLocation == "" {
-		http.Error(w, "name, category, and roomLocation are required", http.StatusBadRequest)
+	if req.Name == "" || req.CategoryID == "" || req.RoomID == "" {
+		http.Error(w, "name, categoryId, and roomId are required", http.StatusBadRequest)
 		return
 	}
 
@@ -183,25 +247,33 @@ func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	var item models.Item
 
 	err = h.DB.QueryRow(r.Context(), `
-		INSERT INTO items (
-			user_id, name, category, room_location, quantity,
+		WITH inserted AS (
+			INSERT INTO items (
+			user_id, name, category_id, room_id, quantity,
 			estimated_value, purchase_date, condition, brand, model,
 			serial_number, description, notes, photo_url, photo_filename,
 			photo_mime_type, photo_size_bytes, tags
-		)
-		VALUES (
+			)
+			SELECT
 			$1, $2, $3, $4, $5, $6, $7, $8, $9,
 			$10, $11, $12, $13, $14, $15, $16, $17, $18
+			FROM categories c
+			JOIN rooms r ON r.id = $4 AND r.user_id = $1
+			WHERE c.id = $3 AND c.user_id = $1
+			RETURNING *
 		)
-		RETURNING id, name, category, room_location, quantity,
-		          estimated_value, purchase_date, condition, brand, model,
-		          serial_number, description, notes, photo_url, photo_filename,
-		          photo_mime_type, photo_size_bytes, tags, created_at, updated_at
+		SELECT i.id, i.name, i.category_id, c.name, i.room_id, r.name, i.quantity,
+		       i.estimated_value, i.purchase_date, i.condition, i.brand, i.model,
+		       i.serial_number, i.description, i.notes, i.photo_url, i.photo_filename,
+		       i.photo_mime_type, i.photo_size_bytes, i.tags, i.created_at, i.updated_at
+		FROM inserted i
+		JOIN categories c ON c.id = i.category_id
+		JOIN rooms r ON r.id = i.room_id
 	`,
 		user.ID,
 		req.Name,
-		req.Category,
-		req.RoomLocation,
+		req.CategoryID,
+		req.RoomID,
 		req.Quantity,
 		req.EstimatedValue,
 		req.PurchaseDate,
@@ -219,7 +291,9 @@ func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	).Scan(
 		&item.ID,
 		&item.Name,
+		&item.CategoryID,
 		&item.Category,
+		&item.RoomID,
 		&item.RoomLocation,
 		&item.Quantity,
 		&item.EstimatedValue,
@@ -240,6 +314,10 @@ func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, "categoryId or roomId is invalid", http.StatusBadRequest)
+			return
+		}
 		http.Error(w, "failed to create item", http.StatusInternalServerError)
 		return
 	}

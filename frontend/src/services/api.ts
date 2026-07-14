@@ -11,7 +11,9 @@ export interface AuthResponse {
 export interface ApiItem {
   id: string;
   name: string;
+  categoryId: string;
   category: string;
+  roomId: string;
   roomLocation: string;
   quantity: number;
   estimatedValue?: number;
@@ -33,8 +35,8 @@ export interface ApiItem {
 
 export interface CreateItemPayload {
   name: string;
-  category: string;
-  roomLocation: string;
+  categoryId: string;
+  roomId: string;
   quantity: number;
   estimatedValue: number | null;
   purchaseDate: string | null;
@@ -49,6 +51,33 @@ export interface CreateItemPayload {
   photoMimeType: string;
   photoSizeBytes: number | null;
   tags: string[];
+}
+
+export interface ItemOption {
+  id: string;
+  name: string;
+}
+
+export interface ItemOptions {
+  categories: ItemOption[];
+  rooms: ItemOption[];
+}
+
+export interface ApiCategory {
+  id: string; name: string; itemCount: number; estimatedValue: number; topRoom: string;
+}
+
+export interface ApiRoom {
+  id: string; name: string; description: string; itemCount: number;
+  estimatedValue: number; recentItem: string; missingInfo: boolean;
+}
+
+export interface DashboardSummary {
+  totalItems: number; estimatedValue: number; roomsTracked: number; missingInfo: number;
+  addedThisMonth: number; valueAddedThisMonth: number;
+  rooms: { id: string; name: string; count: number }[];
+  categories: { id: string; name: string; count: number }[];
+  recentActivity: { itemId: string; itemName: string; roomName: string; type: number; createdAt: string }[];
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080").replace(/\/$/, "");
@@ -134,9 +163,24 @@ export function getItems() {
   return apiRequest<ApiItem[]>("/api/items");
 }
 
+export function getDashboard() { return apiRequest<DashboardSummary>("/api/dashboard"); }
+
 export function getRecentItems(limit = 6) {
   const params = new URLSearchParams({ limit: String(limit) });
   return apiRequest<ApiItem[]>(`/api/items/recent?${params.toString()}`);
+}
+
+export function getItemOptions() {
+  return apiRequest<ItemOptions>("/api/items/options");
+}
+
+export function getCategories() { return apiRequest<ApiCategory[]>("/api/categories"); }
+export function createCategory(name: string) {
+  return apiRequest<ApiCategory>("/api/categories", { method: "POST", body: JSON.stringify({ name }) });
+}
+export function getRooms() { return apiRequest<ApiRoom[]>("/api/rooms"); }
+export function createRoom(name: string, description: string) {
+  return apiRequest<ApiRoom>("/api/rooms", { method: "POST", body: JSON.stringify({ name, description }) });
 }
 
 export function createItem(payload: CreateItemPayload) {
