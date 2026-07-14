@@ -9,6 +9,7 @@ import type { PageName } from "../types";
 import { NAV_ID_TO_PAGE, PAGE_TO_NAV_ID } from "../utils/nav";
 import { createItem, getCategories, getRooms } from "../services/api";
 import { queryKeys } from "../queries/keys";
+import { addItemToCache } from "../queries/itemCache";
 
 const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"];
 const SUGGESTED_TAGS = ["Warranty", "Expensive", "Frequently Used", "Travel", "Fragile", "Insured", "Gift", "Seasonal"];
@@ -53,9 +54,9 @@ export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddIt
   const [error, setError] = useState<string | null>(null);
 	const createItemMutation = useMutation({
 		mutationFn: createItem,
-		onSuccess: async () => {
+		onSuccess: async (createdItem) => {
+			addItemToCache(queryClient, createdItem);
 			await Promise.all([
-				queryClient.invalidateQueries({ queryKey: ["items"] }),
 				queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
 				queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
 				queryClient.invalidateQueries({ queryKey: queryKeys.rooms }),

@@ -48,7 +48,10 @@ function AppRouter() {
   }
 
   useEffect(() => {
-		const handleUnauthorized = () => queryClient.setQueryData(queryKeys.session, null);
+		const handleUnauthorized = () => {
+			queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== "session" });
+			queryClient.setQueryData(queryKeys.session, null);
+		};
 		window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
 		return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
 	}, [queryClient]);
@@ -89,7 +92,10 @@ function AppRouter() {
 
     return (
       <LoginPage
-        onSuccess={(user: User) => queryClient.setQueryData(queryKeys.session, user)}
+		onSuccess={(user: User) => {
+		  queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== "session" });
+		  queryClient.setQueryData(queryKeys.session, user);
+		}}
         onCreateAccount={() => setAuthPage("createAccount")}
       />
     );

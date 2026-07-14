@@ -13,6 +13,7 @@ import type { Item } from "../types";
 import { deleteItem } from "../services/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../queries/keys";
+import { removeItemFromCache } from "../queries/itemCache";
 
 /* ── Sub-components ──────────────────────────────────────────────── */
 
@@ -200,8 +201,8 @@ export default function ItemDetailPage({
     setDeleteError(null);
     try {
       await deleteItem(itemId);
+		removeItemFromCache(queryClient, itemId);
 		await Promise.all([
-			queryClient.invalidateQueries({ queryKey: ["items"] }),
 			queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
 			queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
 			queryClient.invalidateQueries({ queryKey: queryKeys.rooms }),

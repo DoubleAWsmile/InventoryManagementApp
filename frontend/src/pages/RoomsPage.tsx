@@ -3,12 +3,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Home, Plus, ChevronRight, Settings2, Eye, Package,
   Pencil, TrendingUp, AlertCircle, Layers, Bed,
-  Coffee, Car, Shirt, Wrench, Box, Sofa, Archive,
+  Coffee, Car, Shirt, Wrench, Box, Sofa, Archive, Trash2,
 } from "lucide-react";
 import { TopNav, NavStrip } from "../components/TopNav";
 import type { PageName } from "../types";
 import { NAV_ID_TO_PAGE, PAGE_TO_NAV_ID } from "../utils/nav";
-import { createRoom, getRooms } from "../services/api";
+import { createRoom, deleteRoom, getRooms } from "../services/api";
 import { queryKeys } from "../queries/keys";
 
 /* ── Room data ───────────────────────────────────────────────────── */
@@ -54,6 +54,8 @@ export default function RoomsPage({ onSignOut, onNavigate, onSettings }: RoomsPa
 	const [roomDescription, setRoomDescription] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [deleteTarget, setDeleteTarget] = useState<Room | null>(null);
+	const [deleting, setDeleting] = useState(false);
 
 	const rooms = (roomsQuery.data ?? []).map((room, index): Room => ({
 			...ROOM_STYLES[index % ROOM_STYLES.length],
@@ -75,6 +77,23 @@ export default function RoomsPage({ onSignOut, onNavigate, onSettings }: RoomsPa
 		} catch (requestError) {
 			setError(requestError instanceof Error ? requestError.message : "Unable to create room.");
 		} finally { setSaving(false); }
+	};
+
+	const handleDeleteRoom = async () => {
+		if (!deleteTarget) return;
+		setDeleting(true); setError(null);
+		try {
+			await deleteRoom(deleteTarget.id);
+			setSelectedRoom(null); setDeleteTarget(null);
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: queryKeys.rooms }),
+				queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
+				queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
+				queryClient.invalidateQueries({ queryKey: queryKeys.items }),
+			]);
+		} catch (requestError) {
+			setError(requestError instanceof Error ? requestError.message : "Unable to delete room.");
+		} finally { setDeleting(false); }
 	};
 
   const totalItems = rooms.reduce((s, r) => s + r.items, 0);
@@ -243,6 +262,9 @@ export default function RoomsPage({ onSignOut, onNavigate, onSettings }: RoomsPa
                     <button className="w-full flex items-center justify-center gap-2 h-9 rounded-xl border border-border bg-card text-sm font-semibold text-foreground hover:bg-muted transition-colors">
                       <Pencil size={13} />Edit Room
                     </button>
+					<button onClick={() => setDeleteTarget(detail)} className="w-full flex items-center justify-center gap-2 h-9 rounded-xl border border-red-200 bg-red-50 text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors">
+					  <Trash2 size={13} />Delete Room
+					</button>
                   </div>
                 </div>
               </div>
@@ -266,6 +288,19 @@ export default function RoomsPage({ onSignOut, onNavigate, onSettings }: RoomsPa
 
         {/* Add Room modal hint */}
         {(error || roomsQuery.error) && <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error ?? (roomsQuery.error instanceof Error ? roomsQuery.error.message : "Unable to load rooms.")}</div>}
+		{deleteTarget && (
+		  <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => !deleting && setDeleteTarget(null)}>
+			<div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl" onClick={(event) => event.stopPropagation()}>
+			  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600"><Trash2 size={18} /></div>
+			  <h2 className="text-base font-bold text-foreground">Delete “{deleteTarget.name}”?</h2>
+			  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">This room will be removed from your account. Items currently assigned to it will not be deleted; their room will be cleared and shown as unassigned.</p>
+			  <div className="mt-5 flex gap-2">
+				<button onClick={handleDeleteRoom} disabled={deleting} className="flex-1 h-9 rounded-xl bg-red-600 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">{deleting ? "Deleting…" : "Delete Room"}</button>
+				<button onClick={() => setDeleteTarget(null)} disabled={deleting} className="flex-1 h-9 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-muted">Cancel</button>
+			  </div>
+			</div>
+		  </div>
+		)}
         {showAddRoom && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowAddRoom(false)}>
             <div className="bg-card rounded-2xl border border-border shadow-xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>

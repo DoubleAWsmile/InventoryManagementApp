@@ -1,3 +1,5 @@
+import { apiFetch } from "./apiClient";
+
 export interface User {
   email: string;
   displayName: string;
@@ -111,7 +113,7 @@ export async function logout(): Promise<void> {
 
 export function getCurrentUser() { return apiFetch<User>("/api/me"); }
 
-export function getItems(cursor?: string, limit = 24) {
+export function fetchItems(cursor?: string, limit = 24) {
   const params = new URLSearchParams({ limit: String(limit) });
   if (cursor) params.set("cursor", cursor);
   return apiFetch<CursorPage<ApiItem>>(`/api/items?${params.toString()}`);
@@ -137,9 +139,15 @@ export function createRecommendedCategories(names: string[]) {
     method: "POST", body: JSON.stringify({ names }),
   });
 }
+export function deleteCategory(categoryId: string) {
+  return apiFetch<void>(`/api/categories/${encodeURIComponent(categoryId)}`, { method: "DELETE" });
+}
 export function getRooms() { return apiFetch<ApiRoom[]>("/api/rooms"); }
 export function createRoom(name: string, description: string) {
   return apiFetch<ApiRoom>("/api/rooms", { method: "POST", body: JSON.stringify({ name, description }) });
+}
+export function deleteRoom(roomId: string) {
+  return apiFetch<void>(`/api/rooms/${encodeURIComponent(roomId)}`, { method: "DELETE" });
 }
 
 export function createItem(payload: CreateItemPayload) {
@@ -154,4 +162,3 @@ export function deleteItem(itemId: string | number) {
     method: "DELETE",
   });
 }
-import { apiFetch } from "./apiClient";

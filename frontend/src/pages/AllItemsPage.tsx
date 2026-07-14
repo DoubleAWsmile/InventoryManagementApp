@@ -13,7 +13,7 @@ import { CATEGORY_COLORS, TAG_COLORS, PAGE_SIZE, toDisplayItem } from "../data/i
 import type { Item, PageName } from "../types";
 import { NAV_ID_TO_PAGE } from "../utils/nav";
 import { useInventoryPrefs } from "../context/InventoryPrefsContext";
-import { getItems } from "../services/api";
+import { fetchItems } from "../services/api";
 import { queryKeys } from "../queries/keys";
 
 /* ── Sort options ────────────────────────────────────────────────── */
@@ -61,12 +61,18 @@ export default function AllItemsPage({
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [sortOpen, setSortOpen] = useState(false);
 	const itemsQuery = useInfiniteQuery({
-		queryKey: queryKeys.items(24),
-		queryFn: ({ pageParam }) => getItems(pageParam, 24),
+		queryKey: queryKeys.items,
+		queryFn: ({ pageParam }) => fetchItems(pageParam, 24),
 		initialPageParam: undefined as string | undefined,
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+		staleTime: 5 * 60 * 1000,
+		refetchOnMount: false,
+		refetchOnWindowFocus: true,
 	});
-	const items = useMemo(() => (itemsQuery.data?.pages ?? []).flatMap((page) => page.data).map(toDisplayItem), [itemsQuery.data]);
+	const items = useMemo(() => {
+		const uniqueItems = new Map((itemsQuery.data?.pages ?? []).flatMap((page) => page.data).map((item) => [item.id, item]));
+		return [...uniqueItems.values()].map(toDisplayItem);
+	}, [itemsQuery.data]);
 	const loading = itemsQuery.isPending;
 	const loadError = itemsQuery.error instanceof Error ? itemsQuery.error.message : null;
 
@@ -310,7 +316,7 @@ export default function AllItemsPage({
         </div>
 
         {/* ── Grid view ────────────────────────────────────────────── */}
-        {viewMode === "grid" && (
+        {viewMode === "grid" && !loading && !loadError && (
           visible.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
@@ -340,7 +346,7 @@ export default function AllItemsPage({
         )}
 
         {/* ── List view ────────────────────────────────────────────── */}
-        {viewMode === "list" && (
+        {viewMode === "list" && !loading && !loadError && (
           <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
             {/* Table header */}
             <div

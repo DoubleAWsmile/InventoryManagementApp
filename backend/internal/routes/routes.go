@@ -29,8 +29,10 @@ func Setup(userHandler *handlers.UserHandler, itemHandler *handlers.ItemHandler)
 	r.Get("/api/categories", itemHandler.GetCategories)
 	r.Post("/api/categories", itemHandler.CreateCategory)
 	r.Post("/api/categories/recommended", itemHandler.CreateRecommendedCategories)
+	r.Delete("/api/categories/{categoryId}", itemHandler.DeleteCategory)
 	r.Get("/api/rooms", itemHandler.GetRooms)
 	r.Post("/api/rooms", itemHandler.CreateRoom)
+	r.Delete("/api/rooms/{roomId}", itemHandler.DeleteRoom)
 
 	return r
 }

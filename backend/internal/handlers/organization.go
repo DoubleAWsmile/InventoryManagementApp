@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/models"
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -86,6 +87,24 @@ func (h *ItemHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, category)
+}
+
+func (h *ItemHandler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
+	user, err := getCurrentUserFromRequest(h.DB, r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	result, err := h.DB.Exec(r.Context(), `DELETE FROM categories WHERE id = $1 AND user_id = $2`, chi.URLParam(r, "categoryId"), user.ID)
+	if err != nil {
+		http.Error(w, "Failed to delete category", http.StatusInternalServerError)
+		return
+	}
+	if result.RowsAffected() == 0 {
+		http.Error(w, "Category not found", http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *ItemHandler) CreateRecommendedCategories(w http.ResponseWriter, r *http.Request) {
@@ -210,6 +229,24 @@ func (h *ItemHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, room)
+}
+
+func (h *ItemHandler) DeleteRoom(w http.ResponseWriter, r *http.Request) {
+	user, err := getCurrentUserFromRequest(h.DB, r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	result, err := h.DB.Exec(r.Context(), `DELETE FROM rooms WHERE id = $1 AND user_id = $2`, chi.URLParam(r, "roomId"), user.ID)
+	if err != nil {
+		http.Error(w, "Failed to delete room", http.StatusInternalServerError)
+		return
+	}
+	if result.RowsAffected() == 0 {
+		http.Error(w, "Room not found", http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func handleOrganizationWriteError(w http.ResponseWriter, err error, resource string) bool {
