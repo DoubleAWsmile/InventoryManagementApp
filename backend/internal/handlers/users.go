@@ -187,7 +187,7 @@ func (h *UserHandler) DeleteMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	token := auth.GetBearerToken(r)
+	token := auth.GetSessionToken(r)
 	if token == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -211,6 +211,12 @@ func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid session", http.StatusUnauthorized)
 		return
 	}
+
+	secure, sameSite := auth.CookieSecurity(r)
+	http.SetCookie(w, &http.Cookie{
+		Name: auth.SessionCookieName, Value: "", Path: "/", HttpOnly: true,
+		Secure: secure, SameSite: sameSite, MaxAge: -1,
+	})
 
 	w.WriteHeader(http.StatusNoContent)
 }

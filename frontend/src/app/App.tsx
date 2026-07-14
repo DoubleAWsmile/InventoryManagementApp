@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ThemeProvider } from "../theme/ThemeContext";
 import { NotificationsProvider } from "../context/NotificationsContext";
 import { InventoryPrefsProvider } from "../context/InventoryPrefsContext";
 import type { Item, PageName } from "../types";
-import type { User } from "../services/api";
+import { getCategories, getCurrentUser, getDashboard, getRooms, logout, type User } from "../services/api";
+import { ApiError, UNAUTHORIZED_EVENT } from "../services/apiClient";
+import { queryKeys } from "../queries/keys";
 import LoginPage from "../pages/LoginPage";
 import CreateAccountPage from "../pages/CreateAccountPage";
 import DashboardPage from "../pages/DashboardPage";
@@ -21,7 +24,19 @@ import NotificationsPage from "../pages/NotificationsPage";
 import { ALL_ITEMS } from "../data/items";
 
 function AppRouter() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const queryClient = useQueryClient();
+	const sessionQuery = useQuery({
+		queryKey: queryKeys.session,
+		queryFn: async () => {
+			try { return await getCurrentUser(); }
+			catch (error) { if (error instanceof ApiError && error.status === 401) return null; throw error; }
+		},
+		staleTime: 10 * 60 * 1000,
+	});
+	const currentUser = sessionQuery.data ?? null;
+	useQuery({ queryKey: queryKeys.categories, queryFn: getCategories, enabled: !!currentUser });
+	useQuery({ queryKey: queryKeys.rooms, queryFn: getRooms, enabled: !!currentUser });
+	useQuery({ queryKey: queryKeys.dashboard, queryFn: getDashboard, enabled: !!currentUser });
   const [authPage, setAuthPage] = useState<"signIn" | "createAccount">("signIn");
   const [currentPage, setCurrentPage] = useState<PageName>("dashboard");
   const [selectedItem, setSelectedItem] = useState<Item>(ALL_ITEMS[0]);
@@ -32,8 +47,17 @@ function AppRouter() {
     setCurrentPage("itemDetail");
   }
 
-  function signOut() {
-    setCurrentUser(null);
+  useEffect(() => {
+		const handleUnauthorized = () => queryClient.setQueryData(queryKeys.session, null);
+		window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+		return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+	}, [queryClient]);
+
+  async function signOut() {
+		try { await logout(); } finally {
+			queryClient.clear();
+			queryClient.setQueryData(queryKeys.session, null);
+		}
     setCurrentPage("dashboard");
   }
 
@@ -49,6 +73,10 @@ function AppRouter() {
     onSettings: () => setCurrentPage("settings"),
   };
 
+  if (sessionQuery.isPending) {
+	return <div className="min-h-screen bg-background flex items-center justify-center text-sm text-muted-foreground">Loading session…</div>;
+  }
+
   if (!currentUser) {
     if (authPage === "createAccount") {
       return (
@@ -61,7 +89,7 @@ function AppRouter() {
 
     return (
       <LoginPage
-        onSuccess={setCurrentUser}
+        onSuccess={(user: User) => queryClient.setQueryData(queryKeys.session, user)}
         onCreateAccount={() => setAuthPage("createAccount")}
       />
     );

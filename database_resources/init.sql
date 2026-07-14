@@ -115,11 +115,13 @@ CREATE TABLE IF NOT EXISTS categories (
   name TEXT NOT NULL,
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  CONSTRAINT categories_user_name_unique
-    UNIQUE (user_id, name)
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+DROP INDEX IF EXISTS categories_user_name_unique_ci;
+ALTER TABLE categories DROP CONSTRAINT IF EXISTS categories_user_name_unique;
+CREATE UNIQUE INDEX categories_user_name_unique_ci
+ON categories (user_id, LOWER(name));
 
 CREATE INDEX IF NOT EXISTS idx_categories_user_id
 ON categories (user_id);
@@ -151,11 +153,13 @@ CREATE TABLE IF NOT EXISTS rooms (
   description TEXT,
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  CONSTRAINT rooms_user_name_unique
-    UNIQUE (user_id, name)
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+DROP INDEX IF EXISTS rooms_user_name_unique_ci;
+ALTER TABLE rooms DROP CONSTRAINT IF EXISTS rooms_user_name_unique;
+CREATE UNIQUE INDEX rooms_user_name_unique_ci
+ON rooms (user_id, LOWER(name));
 
 CREATE INDEX IF NOT EXISTS idx_rooms_user_id
 ON rooms (user_id);

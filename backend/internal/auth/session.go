@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+const SessionCookieName = "inventory_session"
+
 func GenerateSessionToken() (string, error) {
 	bytes := make([]byte, 32)
 
@@ -37,4 +39,19 @@ func GetBearerToken(r *http.Request) string {
 	}
 
 	return strings.TrimSpace(strings.TrimPrefix(authHeader, prefix))
+}
+
+func GetSessionToken(r *http.Request) string {
+	if cookie, err := r.Cookie(SessionCookieName); err == nil && cookie.Value != "" {
+		return cookie.Value
+	}
+	return GetBearerToken(r)
+}
+
+func CookieSecurity(r *http.Request) (bool, http.SameSite) {
+	secure := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+	if secure {
+		return true, http.SameSiteNoneMode
+	}
+	return false, http.SameSiteLaxMode
 }

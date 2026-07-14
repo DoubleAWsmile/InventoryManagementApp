@@ -10,6 +10,11 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+var recommendedCategoryNames = map[string]struct{}{
+	"Electronics": {}, "Tools": {}, "Clothing": {}, "Documents": {},
+	"Cables": {}, "Safety": {}, "Household Supplies": {}, "Furniture": {},
+}
+
 func (h *ItemHandler) GetCategories(w http.ResponseWriter, r *http.Request) {
 	user, err := getCurrentUserFromRequest(h.DB, r)
 	if err != nil {
@@ -81,6 +86,65 @@ func (h *ItemHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, category)
+}
+
+func (h *ItemHandler) CreateRecommendedCategories(w http.ResponseWriter, r *http.Request) {
+	user, err := getCurrentUserFromRequest(h.DB, r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	var request struct {
+		Names []string `json:"names"`
+	}
+	if json.NewDecoder(r.Body).Decode(&request) != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	names := make([]string, 0, len(request.Names))
+	seen := make(map[string]struct{}, len(request.Names))
+	for _, name := range request.Names {
+		name = strings.TrimSpace(name)
+		if _, recommended := recommendedCategoryNames[name]; !recommended {
+			http.Error(w, "request contains an unsupported recommended category", http.StatusBadRequest)
+			return
+		}
+		if _, duplicate := seen[name]; !duplicate {
+			seen[name] = struct{}{}
+			names = append(names, name)
+		}
+	}
+	if len(names) == 0 {
+		http.Error(w, "at least one recommended category is required", http.StatusBadRequest)
+		return
+	}
+
+	rows, err := h.DB.Query(r.Context(), `
+		INSERT INTO categories (user_id, name)
+		SELECT $1, name FROM unnest($2::text[]) AS name
+		ON CONFLICT DO NOTHING
+		RETURNING id, name
+	`, user.ID, names)
+	if err != nil {
+		http.Error(w, "failed to create recommended categories", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	created := []models.CategorySummary{}
+	for rows.Next() {
+		var category models.CategorySummary
+		if err := rows.Scan(&category.ID, &category.Name); err != nil {
+			http.Error(w, "failed to scan created category", http.StatusInternalServerError)
+			return
+		}
+		created = append(created, category)
+	}
+	if err := rows.Err(); err != nil {
+		http.Error(w, "failed to create recommended categories", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusCreated, created)
 }
 
 func (h *ItemHandler) GetRooms(w http.ResponseWriter, r *http.Request) {

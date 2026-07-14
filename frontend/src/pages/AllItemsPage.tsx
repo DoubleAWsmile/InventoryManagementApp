@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import {
   Plus, ChevronRight, ChevronDown, Home, MoreHorizontal,
   Search, X, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle,
@@ -13,6 +14,7 @@ import type { Item, PageName } from "../types";
 import { NAV_ID_TO_PAGE } from "../utils/nav";
 import { useInventoryPrefs } from "../context/InventoryPrefsContext";
 import { getItems } from "../services/api";
+import { queryKeys } from "../queries/keys";
 
 /* ── Sort options ────────────────────────────────────────────────── */
 
@@ -58,28 +60,15 @@ export default function AllItemsPage({
   const [showMissingInfo, setShowMissingInfo] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [sortOpen, setSortOpen] = useState(false);
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setLoadError(null);
-
-    getItems()
-      .then((responseItems) => {
-        if (active) setItems(responseItems.map(toDisplayItem));
-      })
-      .catch((requestError) => {
-        if (active) setLoadError(requestError instanceof Error ? requestError.message : "Unable to load inventory.");
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => { active = false; };
-  }, []);
+	const itemsQuery = useInfiniteQuery({
+		queryKey: queryKeys.items(24),
+		queryFn: ({ pageParam }) => getItems(pageParam, 24),
+		initialPageParam: undefined as string | undefined,
+		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+	});
+	const items = useMemo(() => (itemsQuery.data?.pages ?? []).flatMap((page) => page.data).map(toDisplayItem), [itemsQuery.data]);
+	const loading = itemsQuery.isPending;
+	const loadError = itemsQuery.error instanceof Error ? itemsQuery.error.message : null;
 
   const allCategories = useMemo(() => [...new Set(items.map((i) => i.category))].sort(), [items]);
   const allRooms = useMemo(() => [...new Set(items.map((i) => i.room))].sort(), [items]);
@@ -121,7 +110,7 @@ export default function AllItemsPage({
   }, [items, search, activeCategory, activeRoom, showLowStock, showMissingInfo, sortBy, sortDir]);
 
   const visible = filtered.slice(0, visibleCount);
-  const hasMore = visibleCount < filtered.length;
+  const hasMore = visibleCount < filtered.length || itemsQuery.hasNextPage;
   const activeFilterCount = [activeCategory, activeRoom, showLowStock && "l", showMissingInfo && "m"].filter(Boolean).length;
 
   const catColor = (cat: string) =>
@@ -138,6 +127,11 @@ export default function AllItemsPage({
     clearFilters();
     setSearch("");
   }
+
+	async function loadMoreItems() {
+		if (visibleCount >= filtered.length && itemsQuery.hasNextPage) await itemsQuery.fetchNextPage();
+		setVisibleCount((value) => value + PAGE_SIZE);
+	}
 
   return (
     <div
@@ -438,10 +432,11 @@ export default function AllItemsPage({
             </p>
             {hasMore ? (
               <button
-                onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
+				onClick={loadMoreItems}
+				disabled={itemsQuery.isFetchingNextPage}
                 className="flex items-center gap-2 h-9 px-4 rounded-xl border border-border bg-card text-sm font-medium text-foreground hover:bg-muted hover:shadow-sm transition-all"
               >
-                Load more <ChevronDown size={14} className="text-muted-foreground" />
+				{itemsQuery.isFetchingNextPage ? "Loading…" : "Load more"} <ChevronDown size={14} className="text-muted-foreground" />
               </button>
             ) : filtered.length > PAGE_SIZE ? (
               <p className="text-xs text-muted-foreground">All items loaded</p>

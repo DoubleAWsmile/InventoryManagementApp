@@ -37,9 +37,7 @@ export default function LoginPage({ onSuccess, onCreateAccount }: LoginPageProps
     }
     setLoading(true);
     try {
-      const { user, token } = await login(email.trim(), password.trim());
-      localStorage.setItem("sessionToken", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      const { user } = await login(email.trim(), password.trim());
       onSuccess(user);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "We couldn't sign you in. Please try again.");

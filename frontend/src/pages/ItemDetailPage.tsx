@@ -11,6 +11,8 @@ import { TopNav, NavStrip } from "../components/TopNav";
 import { ALL_ITEMS, CATEGORY_COLORS } from "../data/items";
 import type { Item } from "../types";
 import { deleteItem } from "../services/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../queries/keys";
 
 /* ── Sub-components ──────────────────────────────────────────────── */
 
@@ -163,6 +165,7 @@ export default function ItemDetailPage({
   onItemSelect,
   onSettings,
 }: ItemDetailPageProps) {
+	const queryClient = useQueryClient();
   const baseItem = item ?? ALL_ITEMS.find((i) => i.id === itemId)!;
   const rawDetail = (typeof itemId === "number" ? ITEM_DETAIL_DATA[itemId] : undefined) ?? FALLBACK_DETAIL(baseItem);
   const detail = { ...rawDetail, Icon: rawDetail.Icon ?? baseItem?.Icon, iconBg: rawDetail.iconBg ?? baseItem?.iconBg, iconColor: rawDetail.iconColor ?? baseItem?.iconColor };
@@ -197,6 +200,12 @@ export default function ItemDetailPage({
     setDeleteError(null);
     try {
       await deleteItem(itemId);
+		await Promise.all([
+			queryClient.invalidateQueries({ queryKey: ["items"] }),
+			queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
+			queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
+			queryClient.invalidateQueries({ queryKey: queryKeys.rooms }),
+		]);
       onDeleted();
     } catch (requestError) {
       setDeleteError(requestError instanceof Error ? requestError.message : "Unable to delete this item.");

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronRight, Upload, Plus, X, Package, Tag,
   ChevronDown, CheckCircle2,
@@ -6,7 +7,8 @@ import {
 import { TopNav, NavStrip } from "../components/TopNav";
 import type { PageName } from "../types";
 import { NAV_ID_TO_PAGE, PAGE_TO_NAV_ID } from "../utils/nav";
-import { createItem, getItemOptions, type ItemOption } from "../services/api";
+import { createItem, getCategories, getRooms } from "../services/api";
+import { queryKeys } from "../queries/keys";
 
 const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"];
 const SUGGESTED_TAGS = ["Warranty", "Expensive", "Frequently Used", "Travel", "Fragile", "Insured", "Gift", "Seasonal"];
@@ -40,23 +42,26 @@ export interface AddItemPageProps {
 }
 
 export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddItemPageProps) {
+	const queryClient = useQueryClient();
+	const categoriesQuery = useQuery({ queryKey: queryKeys.categories, queryFn: getCategories });
+	const roomsQuery = useQuery({ queryKey: queryKeys.rooms, queryFn: getRooms });
+	const categories = categoriesQuery.data ?? [];
+	const rooms = roomsQuery.data ?? [];
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-	const [categories, setCategories] = useState<ItemOption[]>([]);
-	const [rooms, setRooms] = useState<ItemOption[]>([]);
-
-	useEffect(() => {
-		getItemOptions()
-			.then((options) => {
-				setCategories(options.categories);
-				setRooms(options.rooms);
-			})
-			.catch((requestError) => {
-				setError(requestError instanceof Error ? requestError.message : "Unable to load categories and rooms.");
-			});
-	}, []);
+	const createItemMutation = useMutation({
+		mutationFn: createItem,
+		onSuccess: async () => {
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: ["items"] }),
+				queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
+				queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
+				queryClient.invalidateQueries({ queryKey: queryKeys.rooms }),
+			]);
+		},
+	});
 
   const set = (field: keyof FormState, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -89,7 +94,7 @@ export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddIt
 
     setSaving(true);
     try {
-      await createItem({
+      await createItemMutation.mutateAsync({
         name: form.name.trim(),
         categoryId: form.category,
         roomId: form.room,

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Home, Plus, ChevronRight, Settings2, Eye, Package,
   Pencil, TrendingUp, AlertCircle, Layers, Bed,
@@ -8,6 +9,7 @@ import { TopNav, NavStrip } from "../components/TopNav";
 import type { PageName } from "../types";
 import { NAV_ID_TO_PAGE, PAGE_TO_NAV_ID } from "../utils/nav";
 import { createRoom, getRooms } from "../services/api";
+import { queryKeys } from "../queries/keys";
 
 /* ── Room data ───────────────────────────────────────────────────── */
 
@@ -44,24 +46,21 @@ export interface RoomsPageProps {
 }
 
 export default function RoomsPage({ onSignOut, onNavigate, onSettings }: RoomsPageProps) {
+	const queryClient = useQueryClient();
+	const roomsQuery = useQuery({ queryKey: queryKeys.rooms, queryFn: getRooms });
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [showAddRoom, setShowAddRoom] = useState(false);
-	const [rooms, setRooms] = useState<Room[]>([]);
 	const [roomName, setRoomName] = useState("");
 	const [roomDescription, setRoomDescription] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const loadRooms = () => getRooms()
-		.then((data) => setRooms(data.map((room, index) => ({
+	const rooms = (roomsQuery.data ?? []).map((room, index): Room => ({
 			...ROOM_STYLES[index % ROOM_STYLES.length],
 			id: room.id, name: room.name, description: room.description,
 			items: room.itemCount, value: room.estimatedValue,
 			recentItem: room.recentItem || "No items yet", missingInfo: room.missingInfo,
-		}))))
-		.catch((requestError) => setError(requestError instanceof Error ? requestError.message : "Unable to load rooms."));
-
-	useEffect(() => { loadRooms(); }, []);
+		}));
 
 	const handleCreateRoom = async () => {
 		if (!roomName.trim()) { setError("Room name is required."); return; }
@@ -69,7 +68,10 @@ export default function RoomsPage({ onSignOut, onNavigate, onSettings }: RoomsPa
 		try {
 			await createRoom(roomName.trim(), roomDescription.trim());
 			setRoomName(""); setRoomDescription(""); setShowAddRoom(false);
-			await loadRooms();
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: queryKeys.rooms }),
+				queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
+			]);
 		} catch (requestError) {
 			setError(requestError instanceof Error ? requestError.message : "Unable to create room.");
 		} finally { setSaving(false); }
@@ -263,7 +265,7 @@ export default function RoomsPage({ onSignOut, onNavigate, onSettings }: RoomsPa
         </div>
 
         {/* Add Room modal hint */}
-        {error && <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
+        {(error || roomsQuery.error) && <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error ?? (roomsQuery.error instanceof Error ? roomsQuery.error.message : "Unable to load rooms.")}</div>}
         {showAddRoom && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowAddRoom(false)}>
             <div className="bg-card rounded-2xl border border-border shadow-xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>

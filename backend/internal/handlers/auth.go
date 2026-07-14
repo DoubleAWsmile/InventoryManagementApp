@@ -82,10 +82,15 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	secure, sameSite := auth.CookieSecurity(r)
+	http.SetCookie(w, &http.Cookie{
+		Name: auth.SessionCookieName, Value: token, Path: "/", HttpOnly: true,
+		Secure: secure, SameSite: sameSite, Expires: expiresAt,
+	})
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(models.AuthResponse{
-		User:  user,
-		Token: token,
+		User: user,
 	})
 }
 
@@ -94,7 +99,7 @@ func (h *UserHandler) GetCurrentUserFromRequest(r *http.Request) (models.User, e
 }
 
 func getCurrentUserFromRequest(db *pgxpool.Pool, r *http.Request) (models.User, error) {
-	token := auth.GetBearerToken(r)
+	token := auth.GetSessionToken(r)
 	if token == "" {
 		return models.User{}, errors.New("missing auth token")
 	}

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import BarChartSimple from "../components/BarChartSimple";
 import {
   Plus, ChevronRight,
@@ -11,6 +12,7 @@ import { CompactItemCard } from "../components/ItemCard";
 import type { Item, PageName } from "../types";
 import { toDisplayItem } from "../data/items";
 import { getDashboard, getRecentItems, type DashboardSummary } from "../services/api";
+import { queryKeys } from "../queries/keys";
 
 /* ── Dashboard-specific data ─────────────────────────────────────── */
 
@@ -49,33 +51,13 @@ export default function DashboardPage({
   onSettings,
 }: DashboardPageProps) {
   const [activeNav, setActiveNav] = useState("inventory");
-  const [recentlyAddedItems, setRecentlyAddedItems] = useState<Item[]>([]);
-  const [recentItemsLoading, setRecentItemsLoading] = useState(true);
-  const [recentItemsError, setRecentItemsError] = useState<string | null>(null);
-	const [dashboard, setDashboard] = useState<DashboardSummary>(EMPTY_DASHBOARD);
-	const [dashboardError, setDashboardError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    setRecentItemsLoading(true);
-    setRecentItemsError(null);
-
-    Promise.all([getRecentItems(6), getDashboard()])
-      .then(([items, summary]) => {
-		if (active) { setRecentlyAddedItems(items.map(toDisplayItem)); setDashboard(summary); }
-	  })
-      .catch((requestError) => {
-		if (active) {
-			const message = requestError instanceof Error ? requestError.message : "Unable to load dashboard.";
-			setRecentItemsError(message); setDashboardError(message);
-		}
-      })
-      .finally(() => {
-        if (active) setRecentItemsLoading(false);
-      });
-
-    return () => { active = false; };
-  }, []);
+	const dashboardQuery = useQuery({ queryKey: queryKeys.dashboard, queryFn: getDashboard });
+	const recentItemsQuery = useQuery({ queryKey: queryKeys.recentItems(6), queryFn: () => getRecentItems(6) });
+	const dashboard = dashboardQuery.data ?? EMPTY_DASHBOARD;
+	const recentlyAddedItems = (recentItemsQuery.data ?? []).map(toDisplayItem);
+	const dashboardError = dashboardQuery.error instanceof Error ? dashboardQuery.error.message : null;
+	const recentItemsError = recentItemsQuery.error instanceof Error ? recentItemsQuery.error.message : null;
+	const recentItemsLoading = recentItemsQuery.isPending;
 
 	const categoryBreakdown = dashboard.categories.map((category) => ({
 		...category,

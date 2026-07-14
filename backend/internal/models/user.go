@@ -22,8 +22,7 @@ type LoginRequest struct {
 }
 
 type AuthResponse struct {
-	User  User   `json:"user"`
-	Token string `json:"token"`
+	User User `json:"user"`
 }
 
 type DeleteMeRequest struct {

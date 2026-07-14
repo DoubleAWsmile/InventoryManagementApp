@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Plus, ChevronRight, Eye, Tag, TrendingUp, Package, AlertCircle,
+  Plus, ChevronRight, Eye, Tag, TrendingUp, Package, AlertCircle, Check,
   Cpu, Wrench, Shirt, FileText, Cable, Shield, ShoppingBag, Armchair,
 } from "lucide-react";
 import BarChartSimple from "../components/BarChartSimple";
@@ -8,7 +9,8 @@ import { TopNav, NavStrip } from "../components/TopNav";
 import type { PageName } from "../types";
 import { NAV_ID_TO_PAGE, PAGE_TO_NAV_ID } from "../utils/nav";
 import { useTheme } from "../theme/ThemeContext";
-import { createCategory, getCategories } from "../services/api";
+import { createCategory, createRecommendedCategories, getCategories } from "../services/api";
+import { queryKeys } from "../queries/keys";
 
 interface Category {
   id: string;
@@ -41,32 +43,62 @@ export interface CategoriesPageProps {
 
 export default function CategoriesPage({ onSignOut, onNavigate, onSettings }: CategoriesPageProps) {
   const { tokens } = useTheme();
+	const queryClient = useQueryClient();
+	const categoriesQuery = useQuery({ queryKey: queryKeys.categories, queryFn: getCategories });
   const [selected, setSelected] = useState<string | null>(null);
   const [showAddCategory, setShowAddCategory] = useState(false);
-	const [categories, setCategories] = useState<Category[]>([]);
 	const [categoryName, setCategoryName] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [selectedRecommendations, setSelectedRecommendations] = useState<string[]>([]);
 
-	const loadCategories = () => getCategories()
-		.then((data) => setCategories(data.map((category, index) => ({
+	const categories = (categoriesQuery.data ?? []).map((category, index): Category => ({
 			...CATEGORY_STYLES[index % CATEGORY_STYLES.length],
 			id: category.id, name: category.name, items: category.itemCount,
 			value: category.estimatedValue, topRoom: category.topRoom || "—",
-		}))))
-		.catch((requestError) => setError(requestError instanceof Error ? requestError.message : "Unable to load categories."));
-
-	useEffect(() => { loadCategories(); }, []);
+		}));
+	const refreshCategoryData = async () => {
+		await Promise.all([
+			queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
+			queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
+		]);
+	};
 
 	const handleCreateCategory = async () => {
-		if (!categoryName.trim()) { setError("Category name is required."); return; }
+		if (!categoryName.trim()) {
+			if (selectedRecommendations.length > 0) {
+				await handleCreateRecommendations();
+				return;
+			}
+			setError("Enter a category name or select at least one recommended category.");
+			return;
+		}
 		setSaving(true); setError(null);
 		try {
 			await createCategory(categoryName.trim());
 			setCategoryName(""); setShowAddCategory(false);
-			await loadCategories();
+			await refreshCategoryData();
 		} catch (requestError) {
 			setError(requestError instanceof Error ? requestError.message : "Unable to create category.");
+		} finally { setSaving(false); }
+	};
+
+	const toggleRecommendation = (name: string) => {
+		setError(null);
+		setSelectedRecommendations((selected) => selected.includes(name)
+			? selected.filter((category) => category !== name)
+			: [...selected, name]);
+	};
+
+	const handleCreateRecommendations = async () => {
+		if (selectedRecommendations.length === 0) return;
+		setSaving(true); setError(null);
+		try {
+			await createRecommendedCategories(selectedRecommendations);
+			setSelectedRecommendations([]); setShowAddCategory(false);
+			await refreshCategoryData();
+		} catch (requestError) {
+			setError(requestError instanceof Error ? requestError.message : "Unable to create recommended categories.");
 		} finally { setSaving(false); }
 	};
 
@@ -267,19 +299,40 @@ export default function CategoriesPage({ onSignOut, onNavigate, onSettings }: Ca
         </div>
       </main>
 
-      {error && <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
+      {(error || categoriesQuery.error) && <div className="fixed bottom-5 right-5 z-50 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error ?? (categoriesQuery.error instanceof Error ? categoriesQuery.error.message : "Unable to load categories.")}</div>}
       {showAddCategory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowAddCategory(false)}>
-          <div className="bg-card rounded-2xl border border-border shadow-xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-card rounded-2xl border border-border shadow-xl p-6 w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-base font-bold text-foreground mb-4">Add New Category</h2>
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Category Name</label>
                 <input value={categoryName} onChange={(event) => setCategoryName(event.target.value)} placeholder="e.g. Sports Equipment" className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent/50 transition-all" />
               </div>
+			  <div>
+				<div className="flex items-center justify-between mb-2">
+				  <label className="text-xs font-semibold text-muted-foreground">Recommended categories</label>
+				  <span className="text-[11px] text-muted-foreground">Select one or more</span>
+				</div>
+				<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+				  {CATEGORY_STYLES.map(({ name, Icon, iconBg, iconColor }) => {
+					const exists = categories.some((category) => category.name.toLocaleLowerCase() === name.toLocaleLowerCase());
+					const checked = selectedRecommendations.includes(name);
+					return (
+					  <button key={name} type="button" disabled={exists || saving} onClick={() => toggleRecommendation(name)}
+						className={["relative rounded-xl border p-3 text-left transition-all", checked ? "border-accent bg-accent/5 ring-2 ring-accent/15" : "border-border hover:bg-muted/50", exists ? "cursor-not-allowed opacity-45" : ""].join(" ")}>
+						<div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-lg ${iconBg}`}><Icon size={15} className={iconColor} /></div>
+						<p className="text-xs font-semibold text-foreground">{name}</p>
+						<p className="mt-0.5 text-[10px] text-muted-foreground">{exists ? "Already added" : checked ? "Selected" : "Add category"}</p>
+						{checked && <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-accent-foreground"><Check size={11} /></span>}
+					  </button>
+					);
+				  })}
+				</div>
+			  </div>
             </div>
             <div className="flex gap-2 mt-5">
-              <button onClick={handleCreateCategory} disabled={saving} className="flex-1 h-9 rounded-xl bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent/90 transition-colors disabled:opacity-60">{saving ? "Saving…" : "Save Category"}</button>
+			  <button onClick={handleCreateCategory} disabled={saving || (!categoryName.trim() && selectedRecommendations.length === 0)} className="flex-1 h-9 rounded-xl bg-accent text-accent-foreground text-sm font-semibold hover:bg-accent/90 transition-colors disabled:opacity-60">{saving ? "Saving…" : selectedRecommendations.length > 0 && !categoryName.trim() ? `Add Selected (${selectedRecommendations.length})` : "Save Category"}</button>
               <button onClick={() => setShowAddCategory(false)} className="flex-1 h-9 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors">Cancel</button>
             </div>
           </div>
