@@ -76,8 +76,8 @@ export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddIt
     setError(null);
     setSaved(false);
 
-    if (!form.name.trim() || !form.category || !form.room) {
-      setError("Item name, category, and room are required.");
+    if (!form.name.trim()) {
+      setError("Item name is required.");
       return;
     }
 
@@ -96,8 +96,8 @@ export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddIt
     try {
       await createItemMutation.mutateAsync({
         name: form.name.trim(),
-        categoryId: form.category,
-        roomId: form.room,
+        categoryId: form.category || null,
+        roomId: form.room || null,
         quantity,
         estimatedValue,
         purchaseDate: form.purchaseDate ? new Date(`${form.purchaseDate}T00:00:00`).toISOString() : null,

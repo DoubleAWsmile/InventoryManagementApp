@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/models"
 	"github.com/go-chi/chi/v5"
@@ -269,8 +270,9 @@ func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Name == "" || req.CategoryID == "" || req.RoomID == "" {
-		http.Error(w, "Name, categoryId, and roomId are required", http.StatusBadRequest)
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		http.Error(w, "Name is required", http.StatusBadRequest)
 		return
 	}
 
@@ -293,20 +295,23 @@ func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 			photo_mime_type, photo_size_bytes, tags
 			)
 			SELECT
-			$1, $2, $3, $4, $5, $6, $7, $8, $9,
+			$1, $2, c.id, r.id, $5, $6, $7, $8, $9,
 			$10, $11, $12, $13, $14, $15, $16, $17, $18
-			FROM categories c
-			JOIN rooms r ON r.id = $4 AND r.user_id = $1
-			WHERE c.id = $3 AND c.user_id = $1
+			FROM (SELECT 1) AS input
+			LEFT JOIN categories c ON c.id::text = $3 AND c.user_id = $1
+			LEFT JOIN rooms r ON r.id::text = $4 AND r.user_id = $1
+			WHERE ($3 = '' OR c.id IS NOT NULL)
+			  AND ($4 = '' OR r.id IS NOT NULL)
 			RETURNING *
 		)
-		SELECT i.id, i.name, i.category_id, c.name, i.room_id, r.name, i.quantity,
+		SELECT i.id, i.name, COALESCE(i.category_id::text, ''), COALESCE(c.name, ''),
+		       COALESCE(i.room_id::text, ''), COALESCE(r.name, ''), i.quantity,
 		       i.estimated_value, i.purchase_date, i.condition, i.brand, i.model,
 		       i.serial_number, i.description, i.notes, i.photo_url, i.photo_filename,
 		       i.photo_mime_type, i.photo_size_bytes, i.tags, i.created_at, i.updated_at
 		FROM inserted i
-		JOIN categories c ON c.id = i.category_id
-		JOIN rooms r ON r.id = i.room_id
+		LEFT JOIN categories c ON c.id = i.category_id
+		LEFT JOIN rooms r ON r.id = i.room_id
 	`,
 		user.ID,
 		req.Name,

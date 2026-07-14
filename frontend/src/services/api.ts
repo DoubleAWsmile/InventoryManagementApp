@@ -34,8 +34,8 @@ export interface ApiItem {
 
 export interface CreateItemPayload {
   name: string;
-  categoryId: string;
-  roomId: string;
+  categoryId: string | null;
+  roomId: string | null;
   quantity: number;
   estimatedValue: number | null;
   purchaseDate: string | null;
