@@ -147,7 +147,6 @@ function FALLBACK_DETAIL(item: any) {
 export interface ItemDetailPageProps {
   itemId: Item["id"];
   item?: Item;
-  userId: string;
   onBack: () => void;
   onDeleted: () => void;
   onSignOut: () => void;
@@ -158,7 +157,6 @@ export interface ItemDetailPageProps {
 export default function ItemDetailPage({
   itemId,
   item,
-  userId,
   onBack,
   onDeleted,
   onSignOut,
@@ -198,7 +196,7 @@ export default function ItemDetailPage({
     setDeleting(true);
     setDeleteError(null);
     try {
-      await deleteItem(itemId, userId);
+      await deleteItem(itemId);
       onDeleted();
     } catch (requestError) {
       setDeleteError(requestError instanceof Error ? requestError.message : "Unable to delete this item.");

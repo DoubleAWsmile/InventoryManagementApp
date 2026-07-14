@@ -36,13 +36,12 @@ const EMPTY: FormState = {
 };
 
 export interface AddItemPageProps {
-  userId: string;
   onSignOut: () => void;
   onNavigate: (page: PageName) => void;
   onSettings?: () => void;
 }
 
-export default function AddItemPage({ userId, onSignOut, onNavigate, onSettings }: AddItemPageProps) {
+export default function AddItemPage({ onSignOut, onNavigate, onSettings }: AddItemPageProps) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -80,7 +79,6 @@ export default function AddItemPage({ userId, onSignOut, onNavigate, onSettings 
     setSaving(true);
     try {
       await createItem({
-        userId,
         name: form.name.trim(),
         category: form.category,
         roomLocation: form.room,

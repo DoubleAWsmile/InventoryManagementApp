@@ -29,7 +29,6 @@ const SORT_OPTIONS = [
 /* ── Component ───────────────────────────────────────────────────── */
 
 export interface AllItemsPageProps {
-  userId: string;
   onBack: () => void;
   onSignOut: () => void;
   onItemSelect: (item: Item) => void;
@@ -38,7 +37,6 @@ export interface AllItemsPageProps {
 }
 
 export default function AllItemsPage({
-  userId,
   onBack,
   onSignOut,
   onItemSelect,
@@ -69,7 +67,7 @@ export default function AllItemsPage({
     setLoading(true);
     setLoadError(null);
 
-    getItems(userId)
+    getItems()
       .then((responseItems) => {
         if (active) setItems(responseItems.map(toDisplayItem));
       })
@@ -81,7 +79,7 @@ export default function AllItemsPage({
       });
 
     return () => { active = false; };
-  }, [userId]);
+  }, []);
 
   const allCategories = useMemo(() => [...new Set(items.map((i) => i.category))].sort(), [items]);
   const allRooms = useMemo(() => [...new Set(items.map((i) => i.room))].sort(), [items]);

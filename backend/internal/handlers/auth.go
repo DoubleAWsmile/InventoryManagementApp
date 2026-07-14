@@ -10,6 +10,7 @@ import (
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/auth"
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/constants"
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/models"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -89,6 +90,10 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) GetCurrentUserFromRequest(r *http.Request) (models.User, error) {
+	return getCurrentUserFromRequest(h.DB, r)
+}
+
+func getCurrentUserFromRequest(db *pgxpool.Pool, r *http.Request) (models.User, error) {
 	token := auth.GetBearerToken(r)
 	if token == "" {
 		return models.User{}, errors.New("missing auth token")
@@ -98,7 +103,7 @@ func (h *UserHandler) GetCurrentUserFromRequest(r *http.Request) (models.User, e
 
 	var user models.User
 
-	err := h.DB.QueryRow(r.Context(), `
+	err := db.QueryRow(r.Context(), `
 		SELECT 
 			u.id,
 			u.email,

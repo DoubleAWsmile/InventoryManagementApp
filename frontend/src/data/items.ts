@@ -67,7 +67,6 @@ export function toDisplayItem(item: ApiItem): Item {
 
   return {
     id: item.id,
-    userId: item.userId,
     name: item.name,
     category: item.category,
     room: item.roomLocation,

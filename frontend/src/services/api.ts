@@ -1,9 +1,6 @@
 export interface User {
-  id: string;
   email: string;
   displayName: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface AuthResponse {
@@ -13,7 +10,6 @@ export interface AuthResponse {
 
 export interface ApiItem {
   id: string;
-  userId: string;
   name: string;
   category: string;
   roomLocation: string;
@@ -36,7 +32,6 @@ export interface ApiItem {
 }
 
 export interface CreateItemPayload {
-  userId: string;
   name: string;
   category: string;
   roomLocation: string;
@@ -59,12 +54,17 @@ export interface CreateItemPayload {
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080").replace(/\/$/, "");
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  headers.set("Content-Type", "application/json");
+
+  const token = localStorage.getItem("sessionToken");
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {
@@ -130,12 +130,12 @@ export async function logout(): Promise<void> {
   localStorage.removeItem("user");
 }
 
-export function getItems(userId: string) {
-  return apiRequest<ApiItem[]>(`/api/items?userId=${encodeURIComponent(userId)}`);
+export function getItems() {
+  return apiRequest<ApiItem[]>("/api/items");
 }
 
-export function getRecentItems(userId: string, limit = 6) {
-  const params = new URLSearchParams({ userId, limit: String(limit) });
+export function getRecentItems(limit = 6) {
+  const params = new URLSearchParams({ limit: String(limit) });
   return apiRequest<ApiItem[]>(`/api/items/recent?${params.toString()}`);
 }
 
@@ -146,9 +146,8 @@ export function createItem(payload: CreateItemPayload) {
   });
 }
 
-export function deleteItem(itemId: string, userId: string) {
-  const params = new URLSearchParams({ userId });
-  return apiRequest<void>(`/api/items/${encodeURIComponent(itemId)}?${params.toString()}`, {
+export function deleteItem(itemId: string | number) {
+  return apiRequest<void>(`/api/items/${encodeURIComponent(itemId)}`, {
     method: "DELETE",
   });
 }

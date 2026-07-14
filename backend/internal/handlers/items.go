@@ -19,21 +19,21 @@ func NewItemHandler(db *pgxpool.Pool) *ItemHandler {
 }
 
 func (h *ItemHandler) GetItems(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("userId")
-	if userID == "" {
-		http.Error(w, "userId is required", http.StatusBadRequest)
+	user, err := getCurrentUserFromRequest(h.DB, r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, user_id, name, category, room_location, quantity,
+		SELECT id, name, category, room_location, quantity,
 		       estimated_value, purchase_date, condition, brand, model,
 		       serial_number, description, notes, photo_url, photo_filename,
 		       photo_mime_type, photo_size_bytes, tags, created_at, updated_at
 		FROM items
 		WHERE user_id = $1
 		ORDER BY created_at DESC
-	`, userID)
+	`, user.ID)
 
 	if err != nil {
 		http.Error(w, "failed to fetch items", http.StatusInternalServerError)
@@ -48,7 +48,6 @@ func (h *ItemHandler) GetItems(w http.ResponseWriter, r *http.Request) {
 
 		err := rows.Scan(
 			&item.ID,
-			&item.UserID,
 			&item.Name,
 			&item.Category,
 			&item.RoomLocation,
@@ -83,9 +82,9 @@ func (h *ItemHandler) GetItems(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ItemHandler) GetRecentItems(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("userId")
-	if userID == "" {
-		http.Error(w, "userId is required", http.StatusBadRequest)
+	user, err := getCurrentUserFromRequest(h.DB, r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -98,7 +97,7 @@ func (h *ItemHandler) GetRecentItems(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := h.DB.Query(r.Context(), `
-		SELECT id, user_id, name, category, room_location, quantity,
+		SELECT id, name, category, room_location, quantity,
 		       estimated_value, purchase_date, condition, brand, model,
 		       serial_number, description, notes, photo_url, photo_filename,
 		       photo_mime_type, photo_size_bytes, tags, created_at, updated_at
@@ -106,7 +105,7 @@ func (h *ItemHandler) GetRecentItems(w http.ResponseWriter, r *http.Request) {
 		WHERE user_id = $1
 		ORDER BY created_at DESC
 		LIMIT $2
-	`, userID, limit)
+	`, user.ID, limit)
 
 	if err != nil {
 		http.Error(w, "failed to fetch recent items", http.StatusInternalServerError)
@@ -121,7 +120,6 @@ func (h *ItemHandler) GetRecentItems(w http.ResponseWriter, r *http.Request) {
 
 		err := rows.Scan(
 			&item.ID,
-			&item.UserID,
 			&item.Name,
 			&item.Category,
 			&item.RoomLocation,
@@ -156,6 +154,12 @@ func (h *ItemHandler) GetRecentItems(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
+	user, err := getCurrentUserFromRequest(h.DB, r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var req models.CreateItemRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -163,8 +167,8 @@ func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.UserID == "" || req.Name == "" || req.Category == "" || req.RoomLocation == "" {
-		http.Error(w, "userId, name, category, and roomLocation are required", http.StatusBadRequest)
+	if req.Name == "" || req.Category == "" || req.RoomLocation == "" {
+		http.Error(w, "name, category, and roomLocation are required", http.StatusBadRequest)
 		return
 	}
 
@@ -178,7 +182,7 @@ func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 
 	var item models.Item
 
-	err := h.DB.QueryRow(r.Context(), `
+	err = h.DB.QueryRow(r.Context(), `
 		INSERT INTO items (
 			user_id, name, category, room_location, quantity,
 			estimated_value, purchase_date, condition, brand, model,
@@ -189,12 +193,12 @@ func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 			$1, $2, $3, $4, $5, $6, $7, $8, $9,
 			$10, $11, $12, $13, $14, $15, $16, $17, $18
 		)
-		RETURNING id, user_id, name, category, room_location, quantity,
+		RETURNING id, name, category, room_location, quantity,
 		          estimated_value, purchase_date, condition, brand, model,
 		          serial_number, description, notes, photo_url, photo_filename,
 		          photo_mime_type, photo_size_bytes, tags, created_at, updated_at
 	`,
-		req.UserID,
+		user.ID,
 		req.Name,
 		req.Category,
 		req.RoomLocation,
@@ -214,7 +218,6 @@ func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 		req.Tags,
 	).Scan(
 		&item.ID,
-		&item.UserID,
 		&item.Name,
 		&item.Category,
 		&item.RoomLocation,
@@ -247,17 +250,22 @@ func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ItemHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
+	user, err := getCurrentUserFromRequest(h.DB, r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	itemID := chi.URLParam(r, "itemId")
-	userID := r.URL.Query().Get("userId")
-	if itemID == "" || userID == "" {
-		http.Error(w, "itemId and userId are required", http.StatusBadRequest)
+	if itemID == "" {
+		http.Error(w, "itemId is required", http.StatusBadRequest)
 		return
 	}
 
 	result, err := h.DB.Exec(r.Context(), `
 		DELETE FROM items
 		WHERE id = $1 AND user_id = $2
-	`, itemID, userID)
+	`, itemID, user.ID)
 	if err != nil {
 		http.Error(w, "failed to delete item", http.StatusInternalServerError)
 		return

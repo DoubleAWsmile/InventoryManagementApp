@@ -52,7 +52,6 @@ const stats: StatCardData[] = [
 /* ── Component ───────────────────────────────────────────────────── */
 
 export interface DashboardPageProps {
-  userId: string;
   displayName: string;
   onSignOut: () => void;
   onNavigate: (page: PageName, query?: string) => void;
@@ -61,7 +60,6 @@ export interface DashboardPageProps {
 }
 
 export default function DashboardPage({
-  userId,
   displayName,
   onSignOut,
   onNavigate,
@@ -78,7 +76,7 @@ export default function DashboardPage({
     setRecentItemsLoading(true);
     setRecentItemsError(null);
 
-    getRecentItems(userId, 6)
+    getRecentItems(6)
       .then((items) => {
         if (active) setRecentlyAddedItems(items.map(toDisplayItem));
       })
@@ -90,7 +88,7 @@ export default function DashboardPage({
       });
 
     return () => { active = false; };
-  }, [userId]);
+  }, []);
 
   function handleNavSelect(id: string) {
     setActiveNav(id);

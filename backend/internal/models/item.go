@@ -4,7 +4,6 @@ import "time"
 
 type Item struct {
 	ID             string     `json:"id"`
-	UserID         string     `json:"userId"`
 	Name           string     `json:"name"`
 	Category       string     `json:"category"`
 	RoomLocation   string     `json:"roomLocation"`
@@ -27,7 +26,6 @@ type Item struct {
 }
 
 type CreateItemRequest struct {
-	UserID         string     `json:"userId"`
 	Name           string     `json:"name"`
 	Category       string     `json:"category"`
 	RoomLocation   string     `json:"roomLocation"`

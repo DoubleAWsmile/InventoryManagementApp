@@ -23,7 +23,6 @@ export type IconComponent = ComponentType<IconProps>;
 
 export interface Item {
   id: string | number;
-  userId?: string;
   name: string;
   category: string;
   room: string;

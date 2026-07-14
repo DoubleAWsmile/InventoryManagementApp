@@ -71,15 +71,15 @@ function AppRouter() {
     case "settings":
       return <SettingsPage userEmail={currentUser.email} onSignOut={signOut} onNavigate={(p) => nav(p)} />;
     case "allItems":
-      return <AllItemsPage userId={currentUser.id} onBack={() => setCurrentPage("dashboard")} onSignOut={signOut} onItemSelect={selectItem} onSettings={() => setCurrentPage("settings")} onNavigate={nav} />;
+      return <AllItemsPage onBack={() => setCurrentPage("dashboard")} onSignOut={signOut} onItemSelect={selectItem} onSettings={() => setCurrentPage("settings")} onNavigate={nav} />;
     case "itemDetail":
-      return <ItemDetailPage key={String(selectedItem.id)} itemId={selectedItem.id} item={selectedItem} userId={currentUser.id} onBack={() => setCurrentPage("allItems")} onDeleted={() => setCurrentPage("allItems")} onSignOut={signOut} onItemSelect={selectItem} onSettings={() => setCurrentPage("settings")} />;
+      return <ItemDetailPage key={String(selectedItem.id)} itemId={selectedItem.id} item={selectedItem} onBack={() => setCurrentPage("allItems")} onDeleted={() => setCurrentPage("allItems")} onSignOut={signOut} onItemSelect={selectItem} onSettings={() => setCurrentPage("settings")} />;
     case "rooms":
       return <RoomsPage {...commonProps} />;
     case "categories":
       return <CategoriesPage {...commonProps} />;
     case "addItem":
-      return <AddItemPage userId={currentUser.id} {...commonProps} />;
+      return <AddItemPage {...commonProps} />;
     case "wishlist":
       return <WishlistPage {...commonProps} />;
     case "reports":
@@ -93,7 +93,6 @@ function AppRouter() {
     default:
       return (
         <DashboardPage
-          userId={currentUser.id}
           displayName={currentUser.displayName}
           onSignOut={signOut}
           onNavigate={nav}
