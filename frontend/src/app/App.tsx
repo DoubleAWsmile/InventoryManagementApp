@@ -16,12 +16,13 @@ import SettingsPage from "../pages/SettingsPage";
 import RoomsPage from "../pages/RoomsPage";
 import CategoriesPage from "../pages/CategoriesPage";
 import AddItemPage from "../pages/AddItemPage";
+import EditItemPage from "../pages/EditItemPage";
 import WishlistPage from "../pages/WishlistPage";
 import ReportsPage from "../pages/ReportsPage";
 import InventoryMapPage from "../pages/InventoryMapPage";
 import SearchResultsPage from "../pages/SearchResultsPage";
 import NotificationsPage from "../pages/NotificationsPage";
-import { ALL_ITEMS } from "../data/items";
+import { ALL_ITEMS, toDisplayItem } from "../data/items";
 
 function AppRouter() {
   const queryClient = useQueryClient();
@@ -107,7 +108,9 @@ function AppRouter() {
     case "allItems":
       return <AllItemsPage onBack={() => setCurrentPage("dashboard")} onSignOut={signOut} onItemSelect={selectItem} onSettings={() => setCurrentPage("settings")} onNavigate={nav} />;
     case "itemDetail":
-      return <ItemDetailPage key={String(selectedItem.id)} itemId={selectedItem.id} item={selectedItem} onBack={() => setCurrentPage("allItems")} onDeleted={() => setCurrentPage("allItems")} onSignOut={signOut} onItemSelect={selectItem} onSettings={() => setCurrentPage("settings")} />;
+	  return <ItemDetailPage key={String(selectedItem.id)} itemId={selectedItem.id} item={selectedItem} onBack={() => setCurrentPage("allItems")} onDeleted={() => setCurrentPage("allItems")} onEdit={() => setCurrentPage("editItem")} onSignOut={signOut} onItemSelect={selectItem} onSettings={() => setCurrentPage("settings")} />;
+	case "editItem":
+	  return <EditItemPage item={selectedItem} onSaved={(updated) => { setSelectedItem(toDisplayItem(updated)); setCurrentPage("itemDetail"); }} onCancel={() => setCurrentPage("itemDetail")} {...commonProps} />;
     case "rooms":
       return <RoomsPage {...commonProps} />;
     case "categories":

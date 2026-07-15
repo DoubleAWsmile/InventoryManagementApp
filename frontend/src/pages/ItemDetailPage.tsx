@@ -152,6 +152,7 @@ export interface ItemDetailPageProps {
   item?: Item;
   onBack: () => void;
   onDeleted: () => void;
+	onEdit: () => void;
   onSignOut: () => void;
   onItemSelect?: (item: Item) => void;
   onSettings?: () => void;
@@ -162,6 +163,7 @@ export default function ItemDetailPage({
   item,
   onBack,
   onDeleted,
+	onEdit,
   onSignOut,
   onItemSelect,
   onSettings,
@@ -288,7 +290,7 @@ export default function ItemDetailPage({
             <button className="flex items-center gap-2 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors shadow-sm">
               <Copy size={14} />Duplicate
             </button>
-            <button className="flex items-center gap-2 h-9 px-4 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors shadow-sm">
+			<button onClick={onEdit} disabled={typeof itemId !== "string"} className="flex items-center gap-2 h-9 px-4 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors shadow-sm disabled:opacity-50">
               <Pencil size={14} />Edit Item
             </button>
             {!showDeleteConfirm ? (

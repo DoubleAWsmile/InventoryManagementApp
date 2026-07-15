@@ -157,6 +157,13 @@ export function createItem(payload: CreateItemPayload) {
   });
 }
 
+export function updateItem(itemId: string, payload: CreateItemPayload) {
+  return apiFetch<ApiItem>(`/api/items/${encodeURIComponent(itemId)}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function deleteItem(itemId: string | number) {
   return apiFetch<void>(`/api/items/${encodeURIComponent(itemId)}`, {
     method: "DELETE",

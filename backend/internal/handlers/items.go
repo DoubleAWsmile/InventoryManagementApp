@@ -370,6 +370,77 @@ func (h *ItemHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(item)
 }
 
+func (h *ItemHandler) UpdateItem(w http.ResponseWriter, r *http.Request) {
+	user, err := getCurrentUserFromRequest(h.DB, r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	itemID := chi.URLParam(r, "itemId")
+	var req models.CreateItemRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		http.Error(w, "Name is required", http.StatusBadRequest)
+		return
+	}
+	if req.Quantity <= 0 {
+		req.Quantity = 1
+	}
+	if req.Tags == nil {
+		req.Tags = []string{}
+	}
+
+	var item models.Item
+	err = h.DB.QueryRow(r.Context(), `
+		WITH refs AS (
+			SELECT c.id AS category_id, r.id AS room_id
+			FROM (SELECT 1) AS input
+			LEFT JOIN categories c ON c.id::text = $3 AND c.user_id = $1
+			LEFT JOIN rooms r ON r.id::text = $4 AND r.user_id = $1
+			WHERE ($3 = '' OR c.id IS NOT NULL) AND ($4 = '' OR r.id IS NOT NULL)
+		), updated AS (
+			UPDATE items i SET
+				name = $2, category_id = refs.category_id, room_id = refs.room_id,
+				quantity = $5, estimated_value = $6, purchase_date = $7,
+				condition = NULLIF($8, ''), brand = NULLIF($9, ''), model = NULLIF($10, ''),
+				serial_number = NULLIF($11, ''), description = NULLIF($12, ''), notes = NULLIF($13, ''),
+				photo_url = NULLIF($14, ''), photo_filename = NULLIF($15, ''),
+				photo_mime_type = NULLIF($16, ''), photo_size_bytes = $17, tags = $18
+			FROM refs WHERE i.id::text = $19 AND i.user_id = $1 RETURNING i.*
+		)
+		SELECT i.id, i.name, COALESCE(i.category_id::text, ''), COALESCE(c.name, ''),
+		       COALESCE(i.room_id::text, ''), COALESCE(r.name, ''), i.quantity,
+		       i.estimated_value, i.purchase_date, COALESCE(i.condition, ''),
+		       COALESCE(i.brand, ''), COALESCE(i.model, ''), COALESCE(i.serial_number, ''),
+		       COALESCE(i.description, ''), COALESCE(i.notes, ''), COALESCE(i.photo_url, ''),
+		       COALESCE(i.photo_filename, ''), COALESCE(i.photo_mime_type, ''),
+		       i.photo_size_bytes, i.tags, i.created_at, i.updated_at
+		FROM updated i LEFT JOIN categories c ON c.id = i.category_id LEFT JOIN rooms r ON r.id = i.room_id
+	`, user.ID, req.Name, req.CategoryID, req.RoomID, req.Quantity, req.EstimatedValue,
+		req.PurchaseDate, req.Condition, req.Brand, req.Model, req.SerialNumber,
+		req.Description, req.Notes, req.PhotoURL, req.PhotoFilename, req.PhotoMimeType,
+		req.PhotoSizeBytes, req.Tags, itemID).Scan(
+		&item.ID, &item.Name, &item.CategoryID, &item.Category, &item.RoomID, &item.RoomLocation,
+		&item.Quantity, &item.EstimatedValue, &item.PurchaseDate, &item.Condition, &item.Brand,
+		&item.Model, &item.SerialNumber, &item.Description, &item.Notes, &item.PhotoURL,
+		&item.PhotoFilename, &item.PhotoMimeType, &item.PhotoSizeBytes, &item.Tags,
+		&item.CreatedAt, &item.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		http.Error(w, "Item not found or categoryId/roomId is invalid", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Failed to update item", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
 func (h *ItemHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 	user, err := getCurrentUserFromRequest(h.DB, r)
 	if err != nil {
