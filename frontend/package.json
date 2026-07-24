@@ -1,15 +1,31 @@
 {
   "name": "@figma/my-make-file",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "dev": "vite"
+    "build": "npm run build:web",
+    "dev": "npm run dev:web",
+    "dev:web": "vite --mode web",
+    "build:web": "vite build --mode web",
+    "vite:desktop": "vite --mode desktop",
+    "vite:build:desktop": "vite build --mode desktop",
+    "dev:desktop": "npm run desktop:sidecar && tauri dev",
+    "build:desktop": "npm run desktop:sidecar && tauri build",
+    "release:validate": "node scripts/release.mjs validate",
+    "release:prepare": "node scripts/release.mjs prepare",
+    "test": "vitest run",
+    "desktop:sidecar": "node scripts/build-sidecar.mjs",
+    "desktop:dev": "npm run dev:desktop",
+    "desktop:build": "npm run build:desktop",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx}\""
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",
+    "@fontsource/figtree": "^5.2.8",
+    "@fontsource/instrument-serif": "^5.2.8",
     "@mui/material": "7.3.5",
     "@popperjs/core": "2.11.8",
     "@radix-ui/react-accordion": "1.2.3",
@@ -39,6 +55,7 @@
     "@radix-ui/react-toggle-group": "1.1.2",
     "@radix-ui/react-tooltip": "1.1.8",
     "@tanstack/react-query": "^5.101.2",
+    "@tauri-apps/api": "^2.8.0",
     "canvas-confetti": "1.9.4",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
@@ -66,9 +83,12 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.12",
+    "@tauri-apps/cli": "^2.11.4",
     "@vitejs/plugin-react": "4.7.0",
+    "prettier": "^3.9.5",
     "tailwindcss": "4.1.12",
-    "vite": "6.3.5"
+    "vite": "6.3.5",
+    "vitest": "^3.2.4"
   },
   "peerDependencies": {
     "react": "18.3.1",

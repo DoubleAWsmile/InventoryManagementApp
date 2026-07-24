@@ -3,10 +3,17 @@ import type { PageName } from "../types";
 
 export interface AddItemPageProps {
   onSignOut: () => void;
-  onNavigate: (page: PageName) => void;
+  onNavigate: (page: PageName, value?: string) => void;
   onSettings?: () => void;
 }
 
 export default function AddItemPage(props: AddItemPageProps) {
-  return <ItemFormPage mode="create" {...props} onSaved={() => props.onNavigate("allItems")} onCancel={() => props.onNavigate("allItems")} />;
+  return (
+    <ItemFormPage
+      mode="create"
+      {...props}
+      onSaved={() => props.onNavigate("allItems")}
+      onCancel={() => props.onNavigate("allItems")}
+    />
+  );
 }

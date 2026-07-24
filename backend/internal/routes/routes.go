@@ -7,33 +7,51 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Setup(userHandler *handlers.UserHandler, itemHandler *handlers.ItemHandler) http.Handler {
+type Handlers struct {
+	Auth         *handlers.AuthHandler
+	Users        *handlers.UserHandler
+	Settings     *handlers.SettingsHandler
+	Items        *handlers.ItemHandler
+	Organization *handlers.OrganizationHandler
+	Wishlist     *handlers.WishlistHandler
+	Analytics    *handlers.AnalyticsHandler
+}
+
+func Setup(h Handlers) http.Handler {
 	r := chi.NewRouter()
 
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	})
 
-	r.Post("/api/users", userHandler.CreateUser)
-	r.Delete("/api/me", userHandler.DeleteMe)
-	r.Post("/api/auth/login", userHandler.Login)
-	r.Post("/api/auth/logout", userHandler.Logout)
-	r.Get("/api/me", userHandler.GetMe)
-	r.Get("/api/dashboard", itemHandler.GetDashboard)
+	r.Post("/api/users", h.Users.CreateUser)
+	r.Delete("/api/me", h.Users.DeleteMe)
+	r.Post("/api/auth/login", h.Auth.Login)
+	r.Post("/api/auth/logout", h.Auth.Logout)
+	r.Get("/api/me", h.Users.GetMe)
+	r.Get("/api/settings", h.Settings.GetSettings)
+	r.Put("/api/settings", h.Settings.UpdateSettings)
+	r.Delete("/api/settings", h.Settings.ResetSettings)
+	r.Get("/api/dashboard", h.Analytics.GetDashboard)
+	r.Get("/api/reports", h.Analytics.GetReports)
+	r.Get("/api/wishlist", h.Wishlist.GetWishlist)
+	r.Post("/api/wishlist", h.Wishlist.CreateWishlistItem)
+	r.Put("/api/wishlist/{wishlistId}", h.Wishlist.UpdateWishlistItem)
+	r.Delete("/api/wishlist/{wishlistId}", h.Wishlist.DeleteWishlistItem)
 
-	r.Get("/api/items", itemHandler.GetItems)
-	r.Get("/api/items/recent", itemHandler.GetRecentItems)
-	r.Get("/api/items/options", itemHandler.GetItemOptions)
-	r.Post("/api/items", itemHandler.CreateItem)
-	r.Put("/api/items/{itemId}", itemHandler.UpdateItem)
-	r.Delete("/api/items/{itemId}", itemHandler.DeleteItem)
-	r.Get("/api/categories", itemHandler.GetCategories)
-	r.Post("/api/categories", itemHandler.CreateCategory)
-	r.Post("/api/categories/recommended", itemHandler.CreateRecommendedCategories)
-	r.Delete("/api/categories/{categoryId}", itemHandler.DeleteCategory)
-	r.Get("/api/rooms", itemHandler.GetRooms)
-	r.Post("/api/rooms", itemHandler.CreateRoom)
-	r.Delete("/api/rooms/{roomId}", itemHandler.DeleteRoom)
+	r.Get("/api/items", h.Items.GetItems)
+	r.Get("/api/items/recent", h.Items.GetRecentItems)
+	r.Get("/api/items/options", h.Items.GetItemOptions)
+	r.Post("/api/items", h.Items.CreateItem)
+	r.Put("/api/items/{itemId}", h.Items.UpdateItem)
+	r.Delete("/api/items/{itemId}", h.Items.DeleteItem)
+	r.Get("/api/categories", h.Organization.GetCategories)
+	r.Post("/api/categories", h.Organization.CreateCategory)
+	r.Post("/api/categories/recommended", h.Organization.CreateRecommendedCategories)
+	r.Delete("/api/categories/{categoryId}", h.Organization.DeleteCategory)
+	r.Get("/api/rooms", h.Organization.GetRooms)
+	r.Post("/api/rooms", h.Organization.CreateRoom)
+	r.Delete("/api/rooms/{roomId}", h.Organization.DeleteRoom)
 
 	return r
 }

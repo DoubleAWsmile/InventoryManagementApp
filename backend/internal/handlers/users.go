@@ -5,20 +5,12 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/auth"
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/models"
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/DoubleAWsmile/InventoryManagementApp/internal/repository"
 )
-
-type UserHandler struct {
-	DB *pgxpool.Pool
-}
-
-func NewUserHandler(db *pgxpool.Pool) *UserHandler {
-	return &UserHandler{DB: db}
-}
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
@@ -59,51 +51,16 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := h.DB.Begin(r.Context())
+	user, err := h.users.Create(r.Context(), repository.CreateUserParams{
+		Email: req.Email, DisplayName: req.DisplayName, PasswordHash: passwordHash,
+	})
 	if err != nil {
-		http.Error(w, "Failed to start transaction", http.StatusInternalServerError)
-		return
-	}
-
-	defer tx.Rollback(r.Context())
-
-	var user models.User
-
-	err = tx.QueryRow(r.Context(), `
-		INSERT INTO users (email, display_name)
-		VALUES ($1, $2)
-		RETURNING id, email, display_name, created_at, updated_at
-	`, req.Email, req.DisplayName).Scan(
-		&user.ID,
-		&user.Email,
-		&user.DisplayName,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		if errors.Is(err, repository.ErrConflict) {
 			http.Error(w, "An account with this email already exists", http.StatusConflict)
 			return
 		}
 
 		http.Error(w, "Failed to create user", http.StatusInternalServerError)
-		return
-	}
-
-	_, err = tx.Exec(r.Context(), `
-		INSERT INTO auth_credentials (user_id, password_hash)
-		VALUES ($1, $2)
-	`, user.ID, passwordHash)
-
-	if err != nil {
-		http.Error(w, "Failed to create credentials", http.StatusInternalServerError)
-		return
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		http.Error(w, "Failed to finish account creation", http.StatusInternalServerError)
 		return
 	}
 
@@ -113,7 +70,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
-	user, err := h.GetCurrentUserFromRequest(r)
+	user, err := getCurrentUserFromRequest(h.sessions, r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -124,7 +81,7 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) DeleteMe(w http.ResponseWriter, r *http.Request) {
-	user, err := h.GetCurrentUserFromRequest(r)
+	user, err := getCurrentUserFromRequest(h.sessions, r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -150,35 +107,24 @@ func (h *UserHandler) DeleteMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var passwordHash string
-
-	err = h.DB.QueryRow(r.Context(), `
-		SELECT password_hash
-		FROM auth_credentials
-		WHERE user_id = $1
-	`, user.ID).Scan(&passwordHash)
-
+	credentials, err := h.users.GetCredentialsByUserID(r.Context(), user.ID)
 	if err != nil {
 		http.Error(w, "Failed to verify account", http.StatusInternalServerError)
 		return
 	}
 
-	if !auth.CheckPassword(password, passwordHash) {
+	if !auth.CheckPassword(password, credentials.PasswordHash) {
 		http.Error(w, "Invalid password", http.StatusUnauthorized)
 		return
 	}
 
-	result, err := h.DB.Exec(r.Context(), `
-		DELETE FROM users
-		WHERE id = $1
-	`, user.ID)
-
+	deleted, err := h.users.Delete(r.Context(), user.ID)
 	if err != nil {
 		http.Error(w, "Failed to delete account", http.StatusInternalServerError)
 		return
 	}
 
-	if result.RowsAffected() == 0 {
+	if !deleted {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
@@ -186,7 +132,7 @@ func (h *UserHandler) DeleteMe(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	token := auth.GetSessionToken(r)
 	if token == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -195,19 +141,13 @@ func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	tokenHash := auth.HashSessionToken(token)
 
-	result, err := h.DB.Exec(r.Context(), `
-		UPDATE sessions
-		SET revoked_at = NOW()
-		WHERE token_hash = $1
-			AND revoked_at IS NULL
-	`, tokenHash)
-
+	revoked, err := h.sessions.Revoke(r.Context(), tokenHash, time.Now())
 	if err != nil {
 		http.Error(w, "Failed to logout", http.StatusInternalServerError)
 		return
 	}
 
-	if result.RowsAffected() == 0 {
+	if !revoked {
 		http.Error(w, "Invalid session", http.StatusUnauthorized)
 		return
 	}

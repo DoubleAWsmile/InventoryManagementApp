@@ -23,7 +23,10 @@ export default function FilterChip({ label, active, removable, onClick, onRemove
       {removable && active && (
         <span
           role="button"
-          onClick={(e) => { e.stopPropagation(); onRemove?.(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove?.();
+          }}
           className="ml-0.5 flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-accent-foreground/20 transition-colors"
         >
           <X size={9} />

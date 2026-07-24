@@ -1,9 +1,22 @@
 import { useState, useMemo } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import {
-  Plus, ChevronRight, ChevronDown, Home, MoreHorizontal,
-  Search, X, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle,
-  LayoutGrid, List, SlidersHorizontal, Download, Filter,
+  Plus,
+  ChevronRight,
+  ChevronDown,
+  Home,
+  MoreHorizontal,
+  Search,
+  X,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  CheckCircle,
+  LayoutGrid,
+  List,
+  SlidersHorizontal,
+  Download,
+  Filter,
   Package,
 } from "lucide-react";
 
@@ -46,8 +59,12 @@ export default function AllItemsPage({
   onNavigate,
 }: AllItemsPageProps) {
   const {
-    defaultView, defaultSort,
-    currencySymbol, showValues, showLowStock: prefShowLowStock, showMissingInfo: prefShowMissingInfo,
+    defaultView,
+    defaultSort,
+    currencySymbol,
+    showValues,
+    showLowStock: prefShowLowStock,
+    showMissingInfo: prefShowMissingInfo,
   } = useInventoryPrefs();
 
   const [search, setSearch] = useState("");
@@ -60,21 +77,23 @@ export default function AllItemsPage({
   const [showMissingInfo, setShowMissingInfo] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [sortOpen, setSortOpen] = useState(false);
-	const itemsQuery = useInfiniteQuery({
-		queryKey: queryKeys.items,
-		queryFn: ({ pageParam }) => fetchItems(pageParam, 24),
-		initialPageParam: undefined as string | undefined,
-		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-		staleTime: 5 * 60 * 1000,
-		refetchOnMount: false,
-		refetchOnWindowFocus: true,
-	});
-	const items = useMemo(() => {
-		const uniqueItems = new Map((itemsQuery.data?.pages ?? []).flatMap((page) => page.data).map((item) => [item.id, item]));
-		return [...uniqueItems.values()].map(toDisplayItem);
-	}, [itemsQuery.data]);
-	const loading = itemsQuery.isPending;
-	const loadError = itemsQuery.error instanceof Error ? itemsQuery.error.message : null;
+  const itemsQuery = useInfiniteQuery({
+    queryKey: queryKeys.items,
+    queryFn: ({ pageParam }) => fetchItems(pageParam, 24),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: true,
+  });
+  const items = useMemo(() => {
+    const uniqueItems = new Map(
+      (itemsQuery.data?.pages ?? []).flatMap((page) => page.data).map((item) => [item.id, item]),
+    );
+    return [...uniqueItems.values()].map(toDisplayItem);
+  }, [itemsQuery.data]);
+  const loading = itemsQuery.isPending;
+  const loadError = itemsQuery.error instanceof Error ? itemsQuery.error.message : null;
 
   const allCategories = useMemo(() => [...new Set(items.map((i) => i.category))].sort(), [items]);
   const allRooms = useMemo(() => [...new Set(items.map((i) => i.room))].sort(), [items]);
@@ -100,13 +119,28 @@ export default function AllItemsPage({
     return [...filteredItems].sort((a, b) => {
       let vA: string | number = a.id;
       let vB: string | number = b.id;
-      if (sortBy === "name") { vA = a.name; vB = b.name; }
-      else if (sortBy === "category") { vA = a.category; vB = b.category; }
-      else if (sortBy === "room") { vA = a.room; vB = b.room; }
-      else if (sortBy === "addedDate") { vA = Date.parse(a.addedDate); vB = Date.parse(b.addedDate); }
-      else if (sortBy === "updatedDate") { vA = Date.parse(a.updatedDate); vB = Date.parse(b.updatedDate); }
-      else if (sortBy === "qty") { vA = a.qty; vB = b.qty; }
-      else if (sortBy === "value") { vA = a.value; vB = b.value; }
+      if (sortBy === "name") {
+        vA = a.name;
+        vB = b.name;
+      } else if (sortBy === "category") {
+        vA = a.category;
+        vB = b.category;
+      } else if (sortBy === "room") {
+        vA = a.room;
+        vB = b.room;
+      } else if (sortBy === "addedDate") {
+        vA = Date.parse(a.addedDate);
+        vB = Date.parse(b.addedDate);
+      } else if (sortBy === "updatedDate") {
+        vA = Date.parse(a.updatedDate);
+        vB = Date.parse(b.updatedDate);
+      } else if (sortBy === "qty") {
+        vA = a.qty;
+        vB = b.qty;
+      } else if (sortBy === "value") {
+        vA = a.value;
+        vB = b.value;
+      }
       if (typeof vA === "string") {
         const c = (vA as string).localeCompare(vB as string);
         return sortDir === "asc" ? c : -c;
@@ -117,10 +151,11 @@ export default function AllItemsPage({
 
   const visible = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length || itemsQuery.hasNextPage;
-  const activeFilterCount = [activeCategory, activeRoom, showLowStock && "l", showMissingInfo && "m"].filter(Boolean).length;
+  const activeFilterCount = [activeCategory, activeRoom, showLowStock && "l", showMissingInfo && "m"].filter(
+    Boolean,
+  ).length;
 
-  const catColor = (cat: string) =>
-    CATEGORY_COLORS[cat] ?? "bg-slate-50 text-slate-700 border-slate-200";
+  const catColor = (cat: string) => CATEGORY_COLORS[cat] ?? "bg-slate-50 text-slate-700 border-slate-200";
 
   function clearFilters() {
     setActiveCategory(null);
@@ -134,31 +169,32 @@ export default function AllItemsPage({
     setSearch("");
   }
 
-	async function loadMoreItems() {
-		if (visibleCount >= filtered.length && itemsQuery.hasNextPage) await itemsQuery.fetchNextPage();
-		setVisibleCount((value) => value + PAGE_SIZE);
-	}
+  async function loadMoreItems() {
+    if (visibleCount >= filtered.length && itemsQuery.hasNextPage) await itemsQuery.fetchNextPage();
+    setVisibleCount((value) => value + PAGE_SIZE);
+  }
 
   return (
-    <div
-      className="min-h-screen bg-background text-foreground"
-      style={{ fontFamily: "'Figtree', sans-serif" }}
-    >
+    <div className="min-h-screen bg-background text-foreground">
       <TopNav onSignOut={onSignOut} onSettings={onSettings} onNavigate={onNavigate} />
 
       <main className="max-w-[1440px] mx-auto px-8 py-7 space-y-6">
-
         {/* Nav strip */}
-        <NavStrip active="inventory" onSelect={(id) => {
-          if (id === "inventory") return;
-          const p = NAV_ID_TO_PAGE[id];
-          if (p && onNavigate) onNavigate(p);
-          else onBack();
-        }} />
+        <NavStrip
+          active="inventory"
+          onSelect={(id) => {
+            if (id === "inventory") return;
+            const p = NAV_ID_TO_PAGE[id];
+            if (p && onNavigate) onNavigate(p);
+            else onBack();
+          }}
+        />
 
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <button onClick={onBack} className="hover:text-foreground transition-colors">Dashboard</button>
+          <button onClick={onBack} className="hover:text-foreground transition-colors">
+            Dashboard
+          </button>
           <ChevronRight size={13} />
           <span className="text-foreground font-medium">All Items</span>
         </div>
@@ -167,28 +203,38 @@ export default function AllItemsPage({
         <div className="flex items-start justify-between">
           <div>
             <h1
-              className="text-[26px] font-bold text-foreground leading-tight"
-              style={{ letterSpacing: "-0.03em", fontFamily: "'Instrument Serif', serif" }}
+              className="font-display text-[26px] text-foreground leading-tight"
+              style={{ letterSpacing: "-0.03em" }}
             >
               All Items
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">Browse and manage everything in your inventory.</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Browse and manage everything in your inventory.
+            </p>
           </div>
           <div className="flex items-center gap-2.5">
             <button className="flex items-center gap-2 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors shadow-sm">
-              <Download size={14} />Export
+              <Download size={14} />
+              Export
             </button>
             <button className="flex items-center gap-2 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors shadow-sm">
-              <SlidersHorizontal size={14} />Bulk Actions
+              <SlidersHorizontal size={14} />
+              Bulk Actions
             </button>
-            <button onClick={() => onNavigate?.("addItem")} className="flex items-center gap-2 h-9 px-4 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors shadow-sm">
-              <Plus size={14} />Add Item
+            <button
+              onClick={() => onNavigate?.("addItem")}
+              className="flex items-center gap-2 h-9 px-4 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors shadow-sm"
+            >
+              <Plus size={14} />
+              Add Item
             </button>
           </div>
         </div>
 
         {(loading || loadError) && (
-          <div className={`px-4 py-3 rounded-xl border text-sm ${loadError ? "bg-red-50 border-red-200 text-red-700" : "bg-muted/40 border-border text-muted-foreground"}`}>
+          <div
+            className={`px-4 py-3 rounded-xl border text-sm ${loadError ? "bg-red-50 border-red-200 text-red-700" : "bg-muted/40 border-border text-muted-foreground"}`}
+          >
             {loadError ?? "Loading inventory…"}
           </div>
         )}
@@ -197,17 +243,26 @@ export default function AllItemsPage({
         <div className="flex items-center gap-3 flex-wrap">
           {/* Search */}
           <div className="relative flex-1 min-w-[220px] max-w-sm">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
             <input
               type="text"
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setVisibleCount(PAGE_SIZE); }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setVisibleCount(PAGE_SIZE);
+              }}
               placeholder="Search items…"
               className="w-full h-9 rounded-lg bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent/50 transition-all"
               style={{ paddingLeft: "2rem", paddingRight: search ? "2rem" : "1rem" }}
             />
             {search && (
-              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
                 <X size={13} />
               </button>
             )}
@@ -228,16 +283,45 @@ export default function AllItemsPage({
                 {SORT_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
-                    onClick={() => { setSortBy(opt.value); setSortOpen(false); setVisibleCount(PAGE_SIZE); }}
-                    className={["w-full flex items-center justify-between px-3.5 py-2 text-sm hover:bg-muted transition-colors text-left", sortBy === opt.value ? "text-accent font-semibold" : "text-foreground"].join(" ")}
+                    onClick={() => {
+                      setSortBy(opt.value);
+                      setSortOpen(false);
+                      setVisibleCount(PAGE_SIZE);
+                    }}
+                    className={[
+                      "w-full flex items-center justify-between px-3.5 py-2 text-sm hover:bg-muted transition-colors text-left",
+                      sortBy === opt.value ? "text-accent font-semibold" : "text-foreground",
+                    ].join(" ")}
                   >
                     {opt.label}
                     {sortBy === opt.value && <CheckCircle size={13} className="text-accent" />}
                   </button>
                 ))}
                 <div className="border-t border-border mt-1 pt-1">
-                  <button onClick={() => { setSortDir("asc"); setSortOpen(false); }} className={["w-full flex items-center gap-2 px-3.5 py-2 text-sm hover:bg-muted text-left", sortDir === "asc" ? "text-accent font-semibold" : "text-foreground"].join(" ")}><ArrowUp size={12} /> Ascending</button>
-                  <button onClick={() => { setSortDir("desc"); setSortOpen(false); }} className={["w-full flex items-center gap-2 px-3.5 py-2 text-sm hover:bg-muted text-left", sortDir === "desc" ? "text-accent font-semibold" : "text-foreground"].join(" ")}><ArrowDown size={12} /> Descending</button>
+                  <button
+                    onClick={() => {
+                      setSortDir("asc");
+                      setSortOpen(false);
+                    }}
+                    className={[
+                      "w-full flex items-center gap-2 px-3.5 py-2 text-sm hover:bg-muted text-left",
+                      sortDir === "asc" ? "text-accent font-semibold" : "text-foreground",
+                    ].join(" ")}
+                  >
+                    <ArrowUp size={12} /> Ascending
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSortDir("desc");
+                      setSortOpen(false);
+                    }}
+                    className={[
+                      "w-full flex items-center gap-2 px-3.5 py-2 text-sm hover:bg-muted text-left",
+                      sortDir === "desc" ? "text-accent font-semibold" : "text-foreground",
+                    ].join(" ")}
+                  >
+                    <ArrowDown size={12} /> Descending
+                  </button>
                 </div>
               </div>
             )}
@@ -245,10 +329,26 @@ export default function AllItemsPage({
 
           {/* View toggle */}
           <div className="flex items-center h-9 rounded-lg border border-border bg-card p-0.5 shadow-sm">
-            <button onClick={() => setViewMode("grid")} className={["w-8 h-8 flex items-center justify-center rounded-md transition-all", viewMode === "grid" ? "bg-accent text-accent-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"].join(" ")}>
+            <button
+              onClick={() => setViewMode("grid")}
+              className={[
+                "w-8 h-8 flex items-center justify-center rounded-md transition-all",
+                viewMode === "grid"
+                  ? "bg-accent text-accent-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              ].join(" ")}
+            >
               <LayoutGrid size={14} />
             </button>
-            <button onClick={() => setViewMode("list")} className={["w-8 h-8 flex items-center justify-center rounded-md transition-all", viewMode === "list" ? "bg-accent text-accent-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"].join(" ")}>
+            <button
+              onClick={() => setViewMode("list")}
+              className={[
+                "w-8 h-8 flex items-center justify-center rounded-md transition-all",
+                viewMode === "list"
+                  ? "bg-accent text-accent-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              ].join(" ")}
+            >
               <List size={14} />
             </button>
           </div>
@@ -263,67 +363,143 @@ export default function AllItemsPage({
         <div className="space-y-2.5">
           {/* Category row */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mr-1" style={{ letterSpacing: "0.08em" }}>
-              <Filter size={10} />Category
+            <div
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mr-1"
+              style={{ letterSpacing: "0.08em" }}
+            >
+              <Filter size={10} />
+              Category
             </div>
             <button
-              onClick={() => { setActiveCategory(null); setVisibleCount(PAGE_SIZE); }}
-              className={["h-7 px-3 rounded-full text-xs font-semibold border transition-all", !activeCategory ? "bg-foreground text-background border-foreground" : "bg-card text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"].join(" ")}
-            >All</button>
+              onClick={() => {
+                setActiveCategory(null);
+                setVisibleCount(PAGE_SIZE);
+              }}
+              className={[
+                "h-7 px-3 rounded-full text-xs font-semibold border transition-all",
+                !activeCategory
+                  ? "bg-foreground text-background border-foreground"
+                  : "bg-card text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground",
+              ].join(" ")}
+            >
+              All
+            </button>
             {allCategories.map((cat) => (
               <button
                 key={cat}
-                onClick={() => { setActiveCategory(activeCategory === cat ? null : cat); setVisibleCount(PAGE_SIZE); }}
-                className={["h-7 px-3 rounded-full text-xs font-semibold border transition-all", activeCategory === cat ? "bg-accent text-accent-foreground border-accent" : "bg-card text-muted-foreground border-border hover:border-accent/40 hover:text-foreground"].join(" ")}
-              >{cat}</button>
+                onClick={() => {
+                  setActiveCategory(activeCategory === cat ? null : cat);
+                  setVisibleCount(PAGE_SIZE);
+                }}
+                className={[
+                  "h-7 px-3 rounded-full text-xs font-semibold border transition-all",
+                  activeCategory === cat
+                    ? "bg-accent text-accent-foreground border-accent"
+                    : "bg-card text-muted-foreground border-border hover:border-accent/40 hover:text-foreground",
+                ].join(" ")}
+              >
+                {cat}
+              </button>
             ))}
           </div>
 
           {/* Room + status row */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mr-1" style={{ letterSpacing: "0.08em" }}>
-              <Home size={10} />Room
+            <div
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mr-1"
+              style={{ letterSpacing: "0.08em" }}
+            >
+              <Home size={10} />
+              Room
             </div>
             <button
-              onClick={() => { setActiveRoom(null); setVisibleCount(PAGE_SIZE); }}
-              className={["h-7 px-3 rounded-full text-xs font-semibold border transition-all", !activeRoom ? "bg-foreground text-background border-foreground" : "bg-card text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"].join(" ")}
-            >All</button>
+              onClick={() => {
+                setActiveRoom(null);
+                setVisibleCount(PAGE_SIZE);
+              }}
+              className={[
+                "h-7 px-3 rounded-full text-xs font-semibold border transition-all",
+                !activeRoom
+                  ? "bg-foreground text-background border-foreground"
+                  : "bg-card text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground",
+              ].join(" ")}
+            >
+              All
+            </button>
             {allRooms.map((room) => (
               <button
                 key={room}
-                onClick={() => { setActiveRoom(activeRoom === room ? null : room); setVisibleCount(PAGE_SIZE); }}
-                className={["h-7 px-3 rounded-full text-xs font-semibold border transition-all", activeRoom === room ? "bg-accent text-accent-foreground border-accent" : "bg-card text-muted-foreground border-border hover:border-accent/40 hover:text-foreground"].join(" ")}
-              >{room}</button>
+                onClick={() => {
+                  setActiveRoom(activeRoom === room ? null : room);
+                  setVisibleCount(PAGE_SIZE);
+                }}
+                className={[
+                  "h-7 px-3 rounded-full text-xs font-semibold border transition-all",
+                  activeRoom === room
+                    ? "bg-accent text-accent-foreground border-accent"
+                    : "bg-card text-muted-foreground border-border hover:border-accent/40 hover:text-foreground",
+                ].join(" ")}
+              >
+                {room}
+              </button>
             ))}
 
             <div className="w-px h-5 bg-border mx-1" />
 
             <button
-              onClick={() => { setShowLowStock((v) => !v); setVisibleCount(PAGE_SIZE); }}
-              className={["h-7 px-3 rounded-full text-xs font-semibold border transition-all", showLowStock ? "bg-amber-500 text-white border-amber-500" : "bg-card text-muted-foreground border-border hover:border-amber-300 hover:text-amber-600"].join(" ")}
-            >Low Stock</button>
+              onClick={() => {
+                setShowLowStock((v) => !v);
+                setVisibleCount(PAGE_SIZE);
+              }}
+              className={[
+                "h-7 px-3 rounded-full text-xs font-semibold border transition-all",
+                showLowStock
+                  ? "bg-amber-500 text-white border-amber-500"
+                  : "bg-card text-muted-foreground border-border hover:border-amber-300 hover:text-amber-600",
+              ].join(" ")}
+            >
+              Low Stock
+            </button>
             <button
-              onClick={() => { setShowMissingInfo((v) => !v); setVisibleCount(PAGE_SIZE); }}
-              className={["h-7 px-3 rounded-full text-xs font-semibold border transition-all", showMissingInfo ? "bg-red-500 text-white border-red-500" : "bg-card text-muted-foreground border-border hover:border-red-300 hover:text-red-500"].join(" ")}
-            >Missing Info</button>
+              onClick={() => {
+                setShowMissingInfo((v) => !v);
+                setVisibleCount(PAGE_SIZE);
+              }}
+              className={[
+                "h-7 px-3 rounded-full text-xs font-semibold border transition-all",
+                showMissingInfo
+                  ? "bg-red-500 text-white border-red-500"
+                  : "bg-card text-muted-foreground border-border hover:border-red-300 hover:text-red-500",
+              ].join(" ")}
+            >
+              Missing Info
+            </button>
 
             {activeFilterCount > 0 && (
-              <button onClick={clearFilters} className="h-7 px-3 rounded-full text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors">
-                <X size={11} />Clear filters
+              <button
+                onClick={clearFilters}
+                className="h-7 px-3 rounded-full text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
+              >
+                <X size={11} />
+                Clear filters
               </button>
             )}
           </div>
         </div>
 
         {/* ── Grid view ────────────────────────────────────────────── */}
-        {viewMode === "grid" && !loading && !loadError && (
-          visible.length === 0 ? (
+        {viewMode === "grid" &&
+          !loading &&
+          !loadError &&
+          (visible.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
                 <Package size={24} className="text-muted-foreground" />
               </div>
               <h3 className="text-base font-semibold text-foreground mb-1">No items found</h3>
-              <p className="text-sm text-muted-foreground max-w-xs">Try adjusting your search or filter criteria.</p>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                Try adjusting your search or filter criteria.
+              </p>
               <button onClick={resetAndNav} className="mt-4 text-sm text-accent font-medium hover:underline">
                 Clear all filters
               </button>
@@ -342,8 +518,7 @@ export default function AllItemsPage({
                 />
               ))}
             </div>
-          )
-        )}
+          ))}
 
         {/* ── List view ────────────────────────────────────────────── */}
         {viewMode === "list" && !loading && !loadError && (
@@ -354,7 +529,11 @@ export default function AllItemsPage({
               style={{ gridTemplateColumns: "2fr 1fr 1fr 60px 80px 120px 32px" }}
             >
               {["Item", "Category", "Room", "Qty", "Value", "Added", ""].map((h) => (
-                <div key={h} className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest" style={{ letterSpacing: "0.07em" }}>
+                <div
+                  key={h}
+                  className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest"
+                  style={{ letterSpacing: "0.07em" }}
+                >
                   {h}
                 </div>
               ))}
@@ -371,23 +550,39 @@ export default function AllItemsPage({
                 <div
                   key={item.id}
                   onClick={() => onItemSelect(item)}
-                  className={["grid items-center px-5 py-3.5 group cursor-pointer hover:bg-muted/30 transition-colors", idx !== visible.length - 1 ? "border-b border-border/50" : ""].join(" ")}
+                  className={[
+                    "grid items-center px-5 py-3.5 group cursor-pointer hover:bg-muted/30 transition-colors",
+                    idx !== visible.length - 1 ? "border-b border-border/50" : "",
+                  ].join(" ")}
                   style={{ gridTemplateColumns: "2fr 1fr 1fr 60px 80px 120px 32px" }}
                 >
                   {/* Name + icon + tags */}
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${item.iconBg}`}>
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${item.iconBg}`}
+                    >
                       <item.Icon size={15} className={item.iconColor} />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-foreground truncate">{item.name}</span>
-                        {prefShowLowStock && item.lowStock && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 flex-shrink-0">LOW</span>}
-                        {prefShowMissingInfo && item.missingInfo && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 text-red-600 flex-shrink-0">INFO</span>}
+                        {prefShowLowStock && item.lowStock && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 flex-shrink-0">
+                            LOW
+                          </span>
+                        )}
+                        {prefShowMissingInfo && item.missingInfo && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 text-red-600 flex-shrink-0">
+                            INFO
+                          </span>
+                        )}
                       </div>
                       <div className="flex gap-1 mt-0.5 flex-wrap">
                         {item.tags.map((tag, i) => (
-                          <span key={tag} className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md ${TAG_COLORS[i % TAG_COLORS.length]}`}>
+                          <span
+                            key={tag}
+                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md ${TAG_COLORS[i % TAG_COLORS.length]}`}
+                          >
                             {tag}
                           </span>
                         ))}
@@ -396,7 +591,9 @@ export default function AllItemsPage({
                   </div>
 
                   {/* Category */}
-                  <span className={`inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full border w-fit ${catColor(item.category)}`}>
+                  <span
+                    className={`inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full border w-fit ${catColor(item.category)}`}
+                  >
                     {item.category}
                   </span>
 
@@ -432,17 +629,17 @@ export default function AllItemsPage({
           <div className="flex items-center justify-between pt-2">
             <p className="text-sm text-muted-foreground">
               Showing{" "}
-              <span className="font-semibold text-foreground">{Math.min(visibleCount, filtered.length)}</span>
-              {" "}of{" "}
-              <span className="font-semibold text-foreground">{filtered.length}</span> items
+              <span className="font-semibold text-foreground">{Math.min(visibleCount, filtered.length)}</span>{" "}
+              of <span className="font-semibold text-foreground">{filtered.length}</span> items
             </p>
             {hasMore ? (
               <button
-				onClick={loadMoreItems}
-				disabled={itemsQuery.isFetchingNextPage}
+                onClick={loadMoreItems}
+                disabled={itemsQuery.isFetchingNextPage}
                 className="flex items-center gap-2 h-9 px-4 rounded-xl border border-border bg-card text-sm font-medium text-foreground hover:bg-muted hover:shadow-sm transition-all"
               >
-				{itemsQuery.isFetchingNextPage ? "Loading…" : "Load more"} <ChevronDown size={14} className="text-muted-foreground" />
+                {itemsQuery.isFetchingNextPage ? "Loading…" : "Load more"}{" "}
+                <ChevronDown size={14} className="text-muted-foreground" />
               </button>
             ) : filtered.length > PAGE_SIZE ? (
               <p className="text-xs text-muted-foreground">All items loaded</p>

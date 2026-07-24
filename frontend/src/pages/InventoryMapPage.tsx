@@ -11,27 +11,37 @@ export interface InventoryMapPageProps {
 
 export default function InventoryMapPage({ onSignOut, onNavigate, onSettings }: InventoryMapPageProps) {
   return (
-    <div className="min-h-screen bg-background text-foreground" style={{ fontFamily: "'Figtree', sans-serif" }}>
+    <div className="min-h-screen bg-background text-foreground">
       <TopNav onSignOut={onSignOut} onSettings={onSettings} onNavigate={onNavigate} />
 
       <main className="max-w-[1440px] mx-auto px-8 py-7 space-y-6">
         <NavStrip
           active={PAGE_TO_NAV_ID["map"] ?? "map"}
-          onSelect={(id) => { const p = NAV_ID_TO_PAGE[id]; if (p) onNavigate(p); }}
+          onSelect={(id) => {
+            const p = NAV_ID_TO_PAGE[id];
+            if (p) onNavigate(p);
+          }}
         />
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <button onClick={() => onNavigate("dashboard")} className="hover:text-foreground transition-colors">Dashboard</button>
+          <button onClick={() => onNavigate("dashboard")} className="hover:text-foreground transition-colors">
+            Dashboard
+          </button>
           <ChevronRight size={13} />
           <span className="text-foreground font-medium">Inventory Map</span>
         </div>
 
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-[26px] font-bold text-foreground leading-tight" style={{ letterSpacing: "-0.03em", fontFamily: "'Instrument Serif', serif" }}>
+            <h1
+              className="font-display text-[26px] text-foreground leading-tight"
+              style={{ letterSpacing: "-0.03em" }}
+            >
               Inventory Map
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">A visual map of where your items are located is coming soon.</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              A visual map of where your items are located is coming soon.
+            </p>
           </div>
         </div>
 
@@ -44,12 +54,10 @@ export default function InventoryMapPage({ onSignOut, onNavigate, onSettings }: 
             <Compass size={11} className="text-accent" />
             <span className="text-xs font-semibold text-accent">Coming Soon</span>
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-3" style={{ fontFamily: "'Instrument Serif', serif" }}>
-            Visual Room Mapping
-          </h2>
+          <h2 className="font-display text-2xl text-foreground mb-3">Visual Room Mapping</h2>
           <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
-            We're building an interactive map of your home where you can drag and drop items into rooms,
-            see inventory density at a glance, and quickly find where everything lives.
+            We're building an interactive map of your home where you can drag and drop items into rooms, see
+            inventory density at a glance, and quickly find where everything lives.
           </p>
 
           <div className="grid grid-cols-3 gap-4 mt-10 max-w-lg">

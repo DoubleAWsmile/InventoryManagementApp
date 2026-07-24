@@ -7,6 +7,7 @@ import (
 
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/db"
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/handlers"
+	postgresrepository "github.com/DoubleAWsmile/InventoryManagementApp/internal/repository/postgres"
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/routes"
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
@@ -36,10 +37,17 @@ func main() {
 	}
 	defer pool.Close()
 
-	userHandler := handlers.NewUserHandler(pool)
-	itemHandler := handlers.NewItemHandler(pool)
-
-	router := routes.Setup(userHandler, itemHandler)
+	store := postgresrepository.New(pool)
+	repositories := store.Repositories()
+	router := routes.Setup(routes.Handlers{
+		Auth:         handlers.NewAuthHandler(repositories.Users, repositories.Sessions),
+		Users:        handlers.NewUserHandler(repositories.Users, repositories.Sessions),
+		Settings:     handlers.NewSettingsHandler(repositories.Settings, repositories.Sessions),
+		Items:        handlers.NewItemHandler(repositories.Items, repositories.Sessions),
+		Organization: handlers.NewOrganizationHandler(repositories.Categories, repositories.Rooms, repositories.Sessions),
+		Wishlist:     handlers.NewWishlistHandler(repositories.Wishlist, repositories.Sessions),
+		Analytics:    handlers.NewAnalyticsHandler(repositories.Analytics, repositories.Sessions),
+	})
 
 	corsHandler := cors.Handler(cors.Options{
 		AllowedOrigins:   []string{frontendURL},

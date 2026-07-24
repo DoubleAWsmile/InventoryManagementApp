@@ -1,19 +1,40 @@
 import { useState } from "react";
 import {
-  ChevronRight, ArrowLeft, MoveRight, Copy, Pencil, Trash2,
-  Camera, Image, Plus, Check, X, Home, CalendarDays, DollarSign,
-  Tag, FileText, BookOpen, RotateCcw, Package, ShoppingCart,
-  ShieldCheck, SlidersHorizontal, Receipt, AlertTriangle, CheckCircle,
+  ChevronRight,
+  ArrowLeft,
+  MoveRight,
+  Copy,
+  Pencil,
+  Trash2,
+  Camera,
+  Image,
+  Plus,
+  Check,
+  X,
+  Home,
+  CalendarDays,
+  DollarSign,
+  Tag,
+  FileText,
+  BookOpen,
+  RotateCcw,
+  Package,
+  ShoppingCart,
+  ShieldCheck,
+  SlidersHorizontal,
+  Receipt,
+  AlertTriangle,
+  CheckCircle,
   Layers,
 } from "lucide-react";
 
 import { TopNav, NavStrip } from "../components/TopNav";
-import { ALL_ITEMS, CATEGORY_COLORS } from "../data/items";
-import type { Item } from "../types";
-import { deleteItem } from "../services/api";
+import { ALL_ITEMS, CATEGORY_COLORS, toDisplayItem } from "../data/items";
+import type { Item, PageName } from "../types";
+import { deleteItem, updateItem, type ApiItem, type CreateItemPayload } from "../services/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../queries/keys";
-import { removeItemFromCache } from "../queries/itemCache";
+import { removeItemFromCache, replaceItemInCache } from "../queries/itemCache";
 
 /* ── Sub-components ──────────────────────────────────────────────── */
 
@@ -58,7 +79,11 @@ function MetaRow({
   return (
     <div className="flex items-start justify-between py-2.5 border-b border-border/40 last:border-0">
       <span className="text-xs font-medium text-muted-foreground min-w-[110px]">{label}</span>
-      <span className={["text-xs font-semibold text-right ml-3", accent ? "text-accent" : "text-foreground"].join(" ")}>
+      <span
+        className={["text-xs font-semibold text-right ml-3", accent ? "text-accent" : "text-foreground"].join(
+          " ",
+        )}
+      >
         {value}
       </span>
     </div>
@@ -90,15 +115,27 @@ const CONDITION_STYLE: Record<string, string> = {
 const ITEM_DETAIL_DATA: Record<number, any> = {
   1: {
     name: "Sony WH-1000XM5 Headphones",
-    category: "Electronics", room: "Bedroom", qty: 1, value: 279,
-    condition: "Excellent", brand: "Sony", model: "WH-1000XM5",
-    serialNumber: "SN-4829-XM5-0041", color: "Midnight Black",
-    addedDate: "Jun 2, 2024", updatedDate: "Jun 8, 2024",
-    purchaseDate: "May 28, 2024", purchasePrice: 279, purchaseStore: "Best Buy",
-    warrantyExpires: "May 28, 2025", warrantyMonthsLeft: 11,
-    description: "Noise-canceling over-ear wireless headphones used primarily in the bedroom office setup. Exceptional sound quality with industry-leading active noise cancellation. Up to 30 hours of battery life on a single charge, and compatible with both the iPhone and MacBook Pro via Bluetooth 5.2.",
+    category: "Electronics",
+    room: "Bedroom",
+    qty: 1,
+    value: 279,
+    condition: "Excellent",
+    brand: "Sony",
+    model: "WH-1000XM5",
+    serialNumber: "SN-4829-XM5-0041",
+    color: "Midnight Black",
+    addedDate: "Jun 2, 2024",
+    updatedDate: "Jun 8, 2024",
+    purchaseDate: "May 28, 2024",
+    purchasePrice: 279,
+    purchaseStore: "Best Buy",
+    warrantyExpires: "May 28, 2025",
+    warrantyMonthsLeft: 11,
+    description:
+      "Noise-canceling over-ear wireless headphones used primarily in the bedroom office setup. Exceptional sound quality with industry-leading active noise cancellation. Up to 30 hours of battery life on a single charge, and compatible with both the iPhone and MacBook Pro via Bluetooth 5.2.",
     tags: ["Audio", "Travel", "Expensive", "Frequently Used", "Warranty"],
-    notes: "Keep the charging cable stored in the original case. The left ear cushion shows minor wear but is still fully functional — consider replacing cushions in approximately 6 months. Paired by default to the MacBook Pro in the office.",
+    notes:
+      "Keep the charging cable stored in the original case. The left ear cushion shows minor wear but is still fully functional — consider replacing cushions in approximately 6 months. Paired by default to the MacBook Pro in the office.",
     customFields: [
       { label: "Color", value: "Midnight Black" },
       { label: "Connectivity", value: "Bluetooth 5.2" },
@@ -106,10 +143,34 @@ const ITEM_DETAIL_DATA: Record<number, any> = {
       { label: "Driver Size", value: "30mm" },
     ],
     activity: [
-      { date: "Jun 8, 2024", action: "Tags updated", detail: "Added 'Travel' and 'Warranty' tags", Icon: Tag, color: "bg-blue-50 text-blue-600" },
-      { date: "Jun 5, 2024", action: "Notes updated", detail: "Added charging cable storage note", Icon: FileText, color: "bg-violet-50 text-violet-600" },
-      { date: "Jun 2, 2024", action: "Item created", detail: "Added to Bedroom inventory", Icon: Plus, color: "bg-emerald-50 text-emerald-600" },
-      { date: "May 28, 2024", action: "Purchase recorded", detail: "$279.00 at Best Buy", Icon: ShoppingCart, color: "bg-orange-50 text-orange-600" },
+      {
+        date: "Jun 8, 2024",
+        action: "Tags updated",
+        detail: "Added 'Travel' and 'Warranty' tags",
+        Icon: Tag,
+        color: "bg-blue-50 text-blue-600",
+      },
+      {
+        date: "Jun 5, 2024",
+        action: "Notes updated",
+        detail: "Added charging cable storage note",
+        Icon: FileText,
+        color: "bg-violet-50 text-violet-600",
+      },
+      {
+        date: "Jun 2, 2024",
+        action: "Item created",
+        detail: "Added to Bedroom inventory",
+        Icon: Plus,
+        color: "bg-emerald-50 text-emerald-600",
+      },
+      {
+        date: "May 28, 2024",
+        action: "Purchase recorded",
+        detail: "$279.00 at Best Buy",
+        Icon: ShoppingCart,
+        color: "bg-orange-50 text-orange-600",
+      },
     ],
     Icon: null,
     iconGradient: "from-blue-50 to-indigo-100",
@@ -125,11 +186,12 @@ function FALLBACK_DETAIL(item: any) {
     serialNumber: item.serialNumber || "—",
     color: "—",
     purchaseDate: item.purchaseDate || "—",
-    purchasePrice: null,
+    purchasePrice: item.value || null,
     purchaseStore: "—",
     warrantyExpires: "—",
     warrantyMonthsLeft: 0,
-    description: item.description || `${item.name} stored in the ${item.room}. Added to inventory ${item.addedDate}.`,
+    description:
+      item.description || `${item.name} stored in the ${item.room}. Added to inventory ${item.addedDate}.`,
     notes: item.notes || "No notes added yet.",
     customFields: [{ label: "Color", value: "—" }],
     activity: [
@@ -145,6 +207,12 @@ function FALLBACK_DETAIL(item: any) {
   };
 }
 
+function toDateInputValue(value?: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+}
+
 /* ── Component ───────────────────────────────────────────────────── */
 
 export interface ItemDetailPageProps {
@@ -152,10 +220,11 @@ export interface ItemDetailPageProps {
   item?: Item;
   onBack: () => void;
   onDeleted: () => void;
-	onEdit: () => void;
+  onEdit: () => void;
   onSignOut: () => void;
   onItemSelect?: (item: Item) => void;
   onSettings?: () => void;
+  onNavigate?: (page: PageName, value?: string) => void;
 }
 
 export default function ItemDetailPage({
@@ -163,18 +232,29 @@ export default function ItemDetailPage({
   item,
   onBack,
   onDeleted,
-	onEdit,
+  onEdit,
   onSignOut,
   onItemSelect,
   onSettings,
+  onNavigate,
 }: ItemDetailPageProps) {
-	const queryClient = useQueryClient();
-  const baseItem = item ?? ALL_ITEMS.find((i) => i.id === itemId)!;
-  const rawDetail = (typeof itemId === "number" ? ITEM_DETAIL_DATA[itemId] : undefined) ?? FALLBACK_DETAIL(baseItem);
-  const detail = { ...rawDetail, Icon: rawDetail.Icon ?? baseItem?.Icon, iconBg: rawDetail.iconBg ?? baseItem?.iconBg, iconColor: rawDetail.iconColor ?? baseItem?.iconColor };
-  const relatedItems = typeof itemId === "number"
-    ? ALL_ITEMS.filter((i) => i.category === detail.category && i.id !== itemId).slice(0, 3)
-    : [];
+  const queryClient = useQueryClient();
+  const [currentItem, setCurrentItem] = useState<Item | undefined>(
+    item ?? ALL_ITEMS.find((candidate) => candidate.id === itemId),
+  );
+  const baseItem = currentItem;
+  const rawDetail =
+    (typeof itemId === "number" ? ITEM_DETAIL_DATA[itemId] : undefined) ?? FALLBACK_DETAIL(baseItem);
+  const detail = {
+    ...rawDetail,
+    Icon: rawDetail.Icon ?? baseItem?.Icon,
+    iconBg: rawDetail.iconBg ?? baseItem?.iconBg,
+    iconColor: rawDetail.iconColor ?? baseItem?.iconColor,
+  };
+  const relatedItems =
+    typeof itemId === "number"
+      ? ALL_ITEMS.filter((i) => i.category === detail.category && i.id !== itemId).slice(0, 3)
+      : [];
 
   const [tags, setTags] = useState<string[]>(detail.tags ?? []);
   const [addingTag, setAddingTag] = useState(false);
@@ -183,8 +263,68 @@ export default function ItemDetailPage({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [activePhoto, setActivePhoto] = useState(0);
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [descriptionVal, setDescriptionVal] = useState(detail.description ?? "");
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesVal, setNotesVal] = useState(detail.notes ?? "");
+  const [editingPurchase, setEditingPurchase] = useState(false);
+  const [purchaseDateVal, setPurchaseDateVal] = useState(toDateInputValue(baseItem?.purchaseDate));
+  const [purchasePriceVal, setPurchasePriceVal] = useState(
+    detail.purchasePrice == null ? "" : String(detail.purchasePrice),
+  );
+  const [savingCard, setSavingCard] = useState<"description" | "notes" | "purchase" | null>(null);
+  const [cardError, setCardError] = useState<string | null>(null);
+
+  function toUpdatePayload(overrides: Partial<CreateItemPayload> = {}): CreateItemPayload {
+    return {
+      name: baseItem!.name,
+      categoryId: baseItem!.categoryId || null,
+      roomId: baseItem!.roomId || null,
+      quantity: baseItem!.qty,
+      estimatedValue: baseItem!.value,
+      purchaseDate: baseItem!.purchaseDate ? new Date(baseItem!.purchaseDate).toISOString() : null,
+      condition: baseItem!.condition ?? "",
+      brand: baseItem!.brand ?? "",
+      model: baseItem!.model ?? "",
+      serialNumber: baseItem!.serialNumber ?? "",
+      description: baseItem!.description ?? "",
+      notes: baseItem!.notes ?? "",
+      photoUrl: baseItem!.photoUrl ?? "",
+      photoFilename: baseItem!.photoFilename ?? "",
+      photoMimeType: baseItem!.photoMimeType ?? "",
+      photoSizeBytes: baseItem!.photoSizeBytes ?? null,
+      tags,
+      ...overrides,
+    };
+  }
+
+  async function saveCard(card: "description" | "notes" | "purchase", overrides: Partial<CreateItemPayload>) {
+    if (typeof itemId !== "string" || !baseItem) return;
+    setSavingCard(card);
+    setCardError(null);
+    try {
+      const updated = await updateItem(itemId, toUpdatePayload(overrides));
+      replaceItemInCache(queryClient, updated);
+      queryClient.setQueryData<ApiItem[]>(["search-items"], (current) =>
+        current?.map((entry) => (entry.id === updated.id ? updated : entry)),
+      );
+      const displayItem = toDisplayItem(updated);
+      setCurrentItem(displayItem);
+      onItemSelect?.(displayItem);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.rooms }),
+      ]);
+      if (card === "description") setEditingDescription(false);
+      if (card === "notes") setEditingNotes(false);
+      if (card === "purchase") setEditingPurchase(false);
+    } catch (requestError) {
+      setCardError(requestError instanceof Error ? requestError.message : "Unable to save these changes.");
+    } finally {
+      setSavingCard(null);
+    }
+  }
 
   function addTag() {
     const t = tagInput.trim();
@@ -203,12 +343,12 @@ export default function ItemDetailPage({
     setDeleteError(null);
     try {
       await deleteItem(itemId);
-		removeItemFromCache(queryClient, itemId);
-		await Promise.all([
-			queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
-			queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
-			queryClient.invalidateQueries({ queryKey: queryKeys.rooms }),
-		]);
+      removeItemFromCache(queryClient, itemId);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.categories }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.rooms }),
+      ]);
       onDeleted();
     } catch (requestError) {
       setDeleteError(requestError instanceof Error ? requestError.message : "Unable to delete this item.");
@@ -222,27 +362,38 @@ export default function ItemDetailPage({
 
   if (!baseItem) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center" style={{ fontFamily: "'Figtree', sans-serif" }}>
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <p className="text-muted-foreground mb-4">Item not found.</p>
-          <button onClick={onBack} className="text-sm text-accent font-medium hover:underline">Go back</button>
+          <button onClick={onBack} className="text-sm text-accent font-medium hover:underline">
+            Go back
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground" style={{ fontFamily: "'Figtree', sans-serif" }}>
-      <TopNav onSignOut={onSignOut} onSettings={onSettings} />
+    <div className="min-h-screen bg-background text-foreground">
+      <TopNav onSignOut={onSignOut} onSettings={onSettings} onNavigate={onNavigate} />
 
       <main className="max-w-[1440px] mx-auto px-8 py-7">
-        <NavStrip active="inventory" onSelect={(id) => { if (id !== "inventory") onBack(); }} />
+        <NavStrip
+          active="inventory"
+          onSelect={(id) => {
+            if (id !== "inventory") onBack();
+          }}
+        />
 
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground mt-6 mb-5">
-          <button onClick={onBack} className="hover:text-foreground transition-colors">Dashboard</button>
+          <button onClick={onBack} className="hover:text-foreground transition-colors">
+            Dashboard
+          </button>
           <ChevronRight size={13} />
-          <button onClick={onBack} className="hover:text-foreground transition-colors">All Items</button>
+          <button onClick={onBack} className="hover:text-foreground transition-colors">
+            All Items
+          </button>
           <ChevronRight size={13} />
           <span className="text-foreground font-medium truncate max-w-xs">{detail.name}</span>
         </div>
@@ -251,7 +402,9 @@ export default function ItemDetailPage({
         <div className="flex items-start justify-between mb-7 gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap mb-2">
-              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${CATEGORY_COLORS[detail.category] ?? "bg-slate-50 text-slate-700 border-slate-200"}`}>
+              <span
+                className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${CATEGORY_COLORS[detail.category] ?? "bg-slate-50 text-slate-700 border-slate-200"}`}
+              >
                 {detail.category}
               </span>
               <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${condStyle}`}>
@@ -262,17 +415,26 @@ export default function ItemDetailPage({
               </span>
             </div>
             <h1
-              className="text-[30px] font-bold text-foreground leading-tight"
-              style={{ letterSpacing: "-0.03em", fontFamily: "'Instrument Serif', serif" }}
+              className="font-display text-[30px] text-foreground leading-tight"
+              style={{ letterSpacing: "-0.03em" }}
             >
               {detail.name}
             </h1>
             <p className="text-sm text-muted-foreground mt-1.5 flex items-center gap-3">
-              <span className="flex items-center gap-1.5"><Home size={12} />{detail.room}</span>
+              <span className="flex items-center gap-1.5">
+                <Home size={12} />
+                {detail.room}
+              </span>
               <span className="text-border">·</span>
-              <span className="flex items-center gap-1.5"><CalendarDays size={12} />Added {detail.addedDate}</span>
+              <span className="flex items-center gap-1.5">
+                <CalendarDays size={12} />
+                Added {detail.addedDate}
+              </span>
               <span className="text-border">·</span>
-              <span className="flex items-center gap-1.5"><DollarSign size={12} />Est. value ${detail.value}</span>
+              <span className="flex items-center gap-1.5">
+                <DollarSign size={12} />
+                Est. value ${detail.value}
+              </span>
             </p>
           </div>
 
@@ -282,29 +444,44 @@ export default function ItemDetailPage({
               onClick={onBack}
               className="flex items-center gap-2 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-sm"
             >
-              <ArrowLeft size={14} />Back
+              <ArrowLeft size={14} />
+              Back
             </button>
             <button className="flex items-center gap-2 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors shadow-sm">
-              <MoveRight size={14} />Move
+              <MoveRight size={14} />
+              Move
             </button>
             <button className="flex items-center gap-2 h-9 px-3.5 rounded-lg border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors shadow-sm">
-              <Copy size={14} />Duplicate
+              <Copy size={14} />
+              Duplicate
             </button>
-			<button onClick={onEdit} disabled={typeof itemId !== "string"} className="flex items-center gap-2 h-9 px-4 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors shadow-sm disabled:opacity-50">
-              <Pencil size={14} />Edit Item
+            <button
+              onClick={onEdit}
+              disabled={typeof itemId !== "string"}
+              className="flex items-center gap-2 h-9 px-4 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors shadow-sm disabled:opacity-50"
+            >
+              <Pencil size={14} />
+              Edit Item
             </button>
             {!showDeleteConfirm ? (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className="flex items-center gap-2 h-9 px-3.5 rounded-lg border border-red-200 bg-red-50 text-sm font-medium text-red-600 hover:bg-red-100 transition-colors shadow-sm"
               >
-                <Trash2 size={14} />Delete
+                <Trash2 size={14} />
+                Delete
               </button>
             ) : (
               <div className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-red-300 bg-red-50">
                 <AlertTriangle size={13} className="text-red-500" />
                 <span className="text-xs font-semibold text-red-600">Sure?</span>
-                <button onClick={handleDelete} disabled={deleting} className="text-xs font-bold text-red-600 hover:text-red-800 px-1 disabled:opacity-60">{deleting ? "Deleting…" : "Yes"}</button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="text-xs font-bold text-red-600 hover:text-red-800 px-1 disabled:opacity-60"
+                >
+                  {deleting ? "Deleting…" : "Yes"}
+                </button>
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
                   className="text-xs font-bold text-muted-foreground hover:text-foreground px-1"
@@ -322,21 +499,29 @@ export default function ItemDetailPage({
           </div>
         )}
 
+        {cardError && (
+          <div className="mb-5 px-4 py-3 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
+            {cardError}
+          </div>
+        )}
+
         {/* Main 2-col layout */}
         <div className="grid grid-cols-[1fr_340px] gap-6 items-start">
-
           {/* ── LEFT COLUMN ─────────────────────────────────────── */}
           <div className="space-y-5">
-
             {/* Image / Photos card */}
             <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-              <div className={`relative h-72 bg-gradient-to-br ${detail.iconGradient} flex items-center justify-center group`}>
+              <div
+                className={`relative h-72 bg-gradient-to-br ${detail.iconGradient} flex items-center justify-center group`}
+              >
                 {detail.photoUrl ? (
                   <img src={detail.photoUrl} alt={detail.name} className="w-full h-full object-contain" />
                 ) : (
                   <div className="flex flex-col items-center gap-4">
                     {detail.Icon && (
-                      <div className={`w-24 h-24 rounded-3xl flex items-center justify-center ${detail.iconBg} shadow-lg`}>
+                      <div
+                        className={`w-24 h-24 rounded-3xl flex items-center justify-center ${detail.iconBg} shadow-lg`}
+                      >
                         <detail.Icon size={48} className={detail.iconColor} />
                       </div>
                     )}
@@ -345,12 +530,14 @@ export default function ItemDetailPage({
                 )}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-end justify-end p-4">
                   <button className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 h-8 px-3 rounded-lg bg-white/90 backdrop-blur-sm text-xs font-semibold text-foreground shadow-md hover:bg-white">
-                    <Camera size={13} />Add Photo
+                    <Camera size={13} />
+                    Add Photo
                   </button>
                 </div>
                 <div className="absolute top-4 left-4">
                   <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white/80 backdrop-blur-sm text-muted-foreground shadow-sm">
-                    <Image size={10} className="inline mr-1" />{detail.photoUrl ? 1 : 0} photo{detail.photoUrl ? "" : "s"}
+                    <Image size={10} className="inline mr-1" />
+                    {detail.photoUrl ? 1 : 0} photo{detail.photoUrl ? "" : "s"}
                   </span>
                 </div>
               </div>
@@ -359,13 +546,21 @@ export default function ItemDetailPage({
                   <button
                     key={i}
                     onClick={() => setActivePhoto(i)}
-                    className={["w-16 h-16 rounded-xl border-2 flex items-center justify-center transition-all", activePhoto === i ? "border-accent bg-accent/5" : "border-border bg-muted hover:border-accent/40"].join(" ")}
+                    className={[
+                      "w-16 h-16 rounded-xl border-2 flex items-center justify-center transition-all",
+                      activePhoto === i
+                        ? "border-accent bg-accent/5"
+                        : "border-border bg-muted hover:border-accent/40",
+                    ].join(" ")}
                   >
                     <Image size={18} className="text-muted-foreground/40" />
                   </button>
                 ))}
                 <button className="w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center hover:border-accent/40 hover:bg-muted transition-all group ml-auto">
-                  <Plus size={18} className="text-muted-foreground/40 group-hover:text-accent transition-colors" />
+                  <Plus
+                    size={18}
+                    className="text-muted-foreground/40 group-hover:text-accent transition-colors"
+                  />
                 </button>
               </div>
             </div>
@@ -374,9 +569,54 @@ export default function ItemDetailPage({
             <SectionCard
               title="Description"
               icon={BookOpen}
-              action={<button className="flex items-center gap-1.5 text-xs text-accent font-medium hover:underline"><Pencil size={11} />Edit</button>}
+              action={
+                editingDescription ? (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => saveCard("description", { description: descriptionVal.trim() })}
+                      disabled={savingCard === "description"}
+                      className="text-xs font-semibold text-accent hover:underline disabled:opacity-50"
+                    >
+                      {savingCard === "description" ? "Saving…" : "Save"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDescriptionVal(detail.description ?? "");
+                        setEditingDescription(false);
+                      }}
+                      disabled={savingCard === "description"}
+                      className="text-xs font-semibold text-muted-foreground hover:underline disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setEditingDescription(true)}
+                    disabled={typeof itemId !== "string"}
+                    className="flex items-center gap-1.5 text-xs text-accent font-medium hover:underline disabled:opacity-40"
+                  >
+                    <Pencil size={11} />
+                    Edit
+                  </button>
+                )
+              }
             >
-              <p className="text-sm text-foreground/80 leading-relaxed">{detail.description}</p>
+              {editingDescription ? (
+                <textarea
+                  autoFocus
+                  value={descriptionVal}
+                  onChange={(event) => setDescriptionVal(event.target.value)}
+                  rows={5}
+                  className="w-full resize-none rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm leading-relaxed text-foreground/80 focus:outline-none focus:ring-2 focus:ring-accent/25"
+                />
+              ) : (
+                <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">
+                  {descriptionVal || (
+                    <span className="italic text-muted-foreground">No description added yet.</span>
+                  )}
+                </p>
+              )}
             </SectionCard>
 
             {/* Tags */}
@@ -405,7 +645,10 @@ export default function ItemDetailPage({
                       onChange={(e) => setTagInput(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") addTag();
-                        if (e.key === "Escape") { setAddingTag(false); setTagInput(""); }
+                        if (e.key === "Escape") {
+                          setAddingTag(false);
+                          setTagInput("");
+                        }
                       }}
                       placeholder="New tag…"
                       className="h-8 w-28 px-2.5 rounded-full border border-accent/50 bg-accent/5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-accent/25"
@@ -417,7 +660,10 @@ export default function ItemDetailPage({
                       <Check size={12} />
                     </button>
                     <button
-                      onClick={() => { setAddingTag(false); setTagInput(""); }}
+                      onClick={() => {
+                        setAddingTag(false);
+                        setTagInput("");
+                      }}
                       className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
                     >
                       <X size={12} className="text-muted-foreground" />
@@ -428,7 +674,8 @@ export default function ItemDetailPage({
                     onClick={() => setAddingTag(true)}
                     className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:border-accent/40 hover:text-accent hover:bg-accent/5 transition-all"
                   >
-                    <Plus size={11} />Add Tag
+                    <Plus size={11} />
+                    Add Tag
                   </button>
                 )}
               </div>
@@ -441,12 +688,32 @@ export default function ItemDetailPage({
               action={
                 editingNotes ? (
                   <div className="flex gap-2">
-                    <button onClick={() => setEditingNotes(false)} className="text-xs font-semibold text-accent hover:underline">Save</button>
-                    <button onClick={() => { setNotesVal(detail.notes); setEditingNotes(false); }} className="text-xs font-semibold text-muted-foreground hover:underline">Cancel</button>
+                    <button
+                      onClick={() => saveCard("notes", { notes: notesVal.trim() })}
+                      disabled={savingCard === "notes"}
+                      className="text-xs font-semibold text-accent hover:underline disabled:opacity-50"
+                    >
+                      {savingCard === "notes" ? "Saving…" : "Save"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setNotesVal(detail.notes ?? "");
+                        setEditingNotes(false);
+                      }}
+                      disabled={savingCard === "notes"}
+                      className="text-xs font-semibold text-muted-foreground hover:underline disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 ) : (
-                  <button onClick={() => setEditingNotes(true)} className="flex items-center gap-1.5 text-xs text-accent font-medium hover:underline">
-                    <Pencil size={11} />Edit
+                  <button
+                    onClick={() => setEditingNotes(true)}
+                    disabled={typeof itemId !== "string"}
+                    className="flex items-center gap-1.5 text-xs text-accent font-medium hover:underline disabled:opacity-40"
+                  >
+                    <Pencil size={11} />
+                    Edit
                   </button>
                 )
               }
@@ -473,8 +740,13 @@ export default function ItemDetailPage({
             >
               <div className="space-y-1">
                 {detail.activity.map((ev: any, i: number) => (
-                  <div key={i} className="flex items-start gap-3.5 py-2.5 border-b border-border/40 last:border-0">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${ev.color}`}>
+                  <div
+                    key={i}
+                    className="flex items-start gap-3.5 py-2.5 border-b border-border/40 last:border-0"
+                  >
+                    <div
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${ev.color}`}
+                    >
                       <ev.Icon size={12} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -490,13 +762,28 @@ export default function ItemDetailPage({
 
           {/* ── RIGHT COLUMN ────────────────────────────────────── */}
           <div className="space-y-4">
-
             {/* Item Details */}
             <SectionCard title="Item Details" icon={Package}>
-              <MetaRow label="Category" value={<span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${CATEGORY_COLORS[detail.category] ?? ""}`}>{detail.category}</span>} />
+              <MetaRow
+                label="Category"
+                value={
+                  <span
+                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${CATEGORY_COLORS[detail.category] ?? ""}`}
+                  >
+                    {detail.category}
+                  </span>
+                }
+              />
               <MetaRow label="Room" value={detail.room} />
               <MetaRow label="Quantity" value={`${detail.qty} unit${detail.qty !== 1 ? "s" : ""}`} />
-              <MetaRow label="Condition" value={<span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${condStyle}`}>{detail.condition}</span>} />
+              <MetaRow
+                label="Condition"
+                value={
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${condStyle}`}>
+                    {detail.condition}
+                  </span>
+                }
+              />
               <MetaRow label="Brand" value={detail.brand} />
               <MetaRow label="Model" value={detail.model} />
               <MetaRow label="Serial No." value={detail.serialNumber} />
@@ -509,14 +796,102 @@ export default function ItemDetailPage({
             <SectionCard
               title="Purchase Information"
               icon={ShoppingCart}
-              action={<button className="text-xs text-accent font-medium hover:underline">Edit</button>}
+              action={
+                editingPurchase ? (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() =>
+                        saveCard("purchase", {
+                          purchaseDate: purchaseDateVal
+                            ? new Date(`${purchaseDateVal}T00:00:00`).toISOString()
+                            : null,
+                          estimatedValue: purchasePriceVal === "" ? null : Number(purchasePriceVal),
+                        })
+                      }
+                      disabled={
+                        savingCard === "purchase" ||
+                        (purchasePriceVal !== "" &&
+                          (!Number.isFinite(Number(purchasePriceVal)) || Number(purchasePriceVal) < 0))
+                      }
+                      className="text-xs font-semibold text-accent hover:underline disabled:opacity-50"
+                    >
+                      {savingCard === "purchase" ? "Saving…" : "Save"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPurchaseDateVal(toDateInputValue(baseItem?.purchaseDate));
+                        setPurchasePriceVal(detail.purchasePrice == null ? "" : String(detail.purchasePrice));
+                        setEditingPurchase(false);
+                      }}
+                      disabled={savingCard === "purchase"}
+                      className="text-xs font-semibold text-muted-foreground hover:underline disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setEditingPurchase(true)}
+                    disabled={typeof itemId !== "string"}
+                    className="flex items-center gap-1.5 text-xs font-medium text-accent hover:underline disabled:opacity-40"
+                  >
+                    <Pencil size={11} />
+                    Edit
+                  </button>
+                )
+              }
             >
-              <MetaRow label="Purchase Date" value={detail.purchaseDate} />
-              <MetaRow label="Store / Seller" value={detail.purchaseStore} />
-              <MetaRow label="Purchase Price" value={detail.purchasePrice == null ? "—" : `$${detail.purchasePrice.toLocaleString()}`} accent={detail.purchasePrice != null} />
+              {editingPurchase ? (
+                <div className="space-y-3">
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                      Purchase Date
+                    </span>
+                    <input
+                      type="date"
+                      value={purchaseDateVal}
+                      onChange={(event) => setPurchaseDateVal(event.target.value)}
+                      className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/25"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                      Purchase Price
+                    </span>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={purchasePriceVal}
+                        onChange={(event) => setPurchasePriceVal(event.target.value)}
+                        placeholder="0.00"
+                        className="h-10 w-full rounded-lg border border-border bg-background pl-7 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/25"
+                      />
+                    </div>
+                  </label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Store or seller is not currently stored for inventory items.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <MetaRow label="Purchase Date" value={detail.purchaseDate} />
+                  <MetaRow label="Store / Seller" value={detail.purchaseStore} />
+                  <MetaRow
+                    label="Purchase Price"
+                    value={detail.purchasePrice == null ? "—" : `$${detail.purchasePrice.toLocaleString()}`}
+                    accent={detail.purchasePrice != null}
+                  />
+                </>
+              )}
               <div className="mt-3">
                 <button className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-accent transition-colors">
-                  <Receipt size={13} />Attach receipt or invoice
+                  <Receipt size={13} />
+                  Attach receipt or invoice
                 </button>
               </div>
             </SectionCard>
@@ -533,7 +908,9 @@ export default function ItemDetailPage({
                     <CheckCircle size={14} className="text-emerald-600 flex-shrink-0" />
                     <div>
                       <p className="text-xs font-semibold text-emerald-700">Warranty active</p>
-                      <p className="text-[11px] text-emerald-600/80 mt-0.5">{detail.warrantyMonthsLeft} months remaining</p>
+                      <p className="text-[11px] text-emerald-600/80 mt-0.5">
+                        {detail.warrantyMonthsLeft} months remaining
+                      </p>
                     </div>
                   </div>
                   <div className="mt-3">
@@ -543,13 +920,17 @@ export default function ItemDetailPage({
                         style={{ width: `${(detail.warrantyMonthsLeft / 12) * 100}%` }}
                       />
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1.5">Coverage: {detail.warrantyMonthsLeft}/12 months remaining</p>
+                    <p className="text-[10px] text-muted-foreground mt-1.5">
+                      Coverage: {detail.warrantyMonthsLeft}/12 months remaining
+                    </p>
                   </div>
                 </>
               ) : (
                 <div className="flex flex-col items-center py-3 text-center">
                   <p className="text-sm text-muted-foreground">No warranty recorded</p>
-                  <button className="mt-2 text-xs text-accent font-medium hover:underline">Add warranty info</button>
+                  <button className="mt-2 text-xs text-accent font-medium hover:underline">
+                    Add warranty info
+                  </button>
                 </div>
               )}
             </SectionCard>
@@ -558,7 +939,9 @@ export default function ItemDetailPage({
             <SectionCard
               title="Custom Fields"
               icon={SlidersHorizontal}
-              action={<button className="text-xs text-accent font-medium hover:underline">+ Add field</button>}
+              action={
+                <button className="text-xs text-accent font-medium hover:underline">+ Add field</button>
+              }
             >
               {detail.customFields.map((f: { label: string; value: string }) => (
                 <MetaRow key={f.label} label={f.label} value={f.value} />
@@ -579,14 +962,21 @@ export default function ItemDetailPage({
                       onClick={() => onItemSelect?.(rel)}
                       className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted cursor-pointer transition-colors group"
                     >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${rel.iconBg}`}>
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${rel.iconBg}`}
+                      >
                         <rel.Icon size={15} className={rel.iconColor} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-foreground truncate">{rel.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{rel.room} · ${rel.value}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {rel.room} · ${rel.value}
+                        </p>
                       </div>
-                      <ChevronRight size={13} className="text-muted-foreground/40 group-hover:text-muted-foreground transition-colors flex-shrink-0" />
+                      <ChevronRight
+                        size={13}
+                        className="text-muted-foreground/40 group-hover:text-muted-foreground transition-colors flex-shrink-0"
+                      />
                     </div>
                   ))}
                 </div>

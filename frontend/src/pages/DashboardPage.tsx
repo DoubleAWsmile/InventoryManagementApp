@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import BarChartSimple from "../components/BarChartSimple";
-import {
-  Plus, ChevronRight,
-  Package, Home, Activity, TrendingUp, Clock,
-} from "lucide-react";
+import { Plus, ChevronRight, Package, Home, Activity, TrendingUp, Clock } from "lucide-react";
 
 import { TopNav, NavStrip } from "../components/TopNav";
 import StatCard from "../components/StatCard";
@@ -19,8 +16,15 @@ import { queryKeys } from "../queries/keys";
 const categoryColors = ["#3F5FE0", "#F59E0B", "#A855F7", "#EC4899", "#38BDF8", "#E5E4E0"];
 
 const EMPTY_DASHBOARD: DashboardSummary = {
-  totalItems: 0, estimatedValue: 0, roomsTracked: 0, missingInfo: 0,
-  addedThisMonth: 0, valueAddedThisMonth: 0, rooms: [], categories: [], recentActivity: [],
+  totalItems: 0,
+  estimatedValue: 0,
+  roomsTracked: 0,
+  missingInfo: 0,
+  addedThisMonth: 0,
+  valueAddedThisMonth: 0,
+  rooms: [],
+  categories: [],
+  recentActivity: [],
 };
 
 function relativeTime(value: string) {
@@ -31,7 +35,6 @@ function relativeTime(value: string) {
   if (seconds < 172800) return "Yesterday";
   return `${Math.floor(seconds / 86400)} days ago`;
 }
-
 
 /* ── Component ───────────────────────────────────────────────────── */
 
@@ -51,25 +54,65 @@ export default function DashboardPage({
   onSettings,
 }: DashboardPageProps) {
   const [activeNav, setActiveNav] = useState("inventory");
-	const dashboardQuery = useQuery({ queryKey: queryKeys.dashboard, queryFn: getDashboard });
-	const recentItemsQuery = useQuery({ queryKey: queryKeys.recentItems(6), queryFn: () => getRecentItems(6) });
-	const dashboard = dashboardQuery.data ?? EMPTY_DASHBOARD;
-	const recentlyAddedItems = (recentItemsQuery.data ?? []).map(toDisplayItem);
-	const dashboardError = dashboardQuery.error instanceof Error ? dashboardQuery.error.message : null;
-	const recentItemsError = recentItemsQuery.error instanceof Error ? recentItemsQuery.error.message : null;
-	const recentItemsLoading = recentItemsQuery.isPending;
+  const dashboardQuery = useQuery({ queryKey: queryKeys.dashboard, queryFn: getDashboard });
+  const recentItemsQuery = useQuery({ queryKey: queryKeys.recentItems(6), queryFn: () => getRecentItems(6) });
+  const dashboard = dashboardQuery.data ?? EMPTY_DASHBOARD;
+  const recentlyAddedItems = (recentItemsQuery.data ?? []).map(toDisplayItem);
+  const dashboardError = dashboardQuery.error instanceof Error ? dashboardQuery.error.message : null;
+  const recentItemsError = recentItemsQuery.error instanceof Error ? recentItemsQuery.error.message : null;
+  const recentItemsLoading = recentItemsQuery.isPending;
 
-	const categoryBreakdown = dashboard.categories.map((category) => ({
-		...category,
-		pct: dashboard.totalItems ? Math.round((category.count / dashboard.totalItems) * 100) : 0,
-	}));
-	const stats = [
-		{ label: "Total Items", value: String(dashboard.totalItems), Icon: Package, sub: `+${dashboard.addedThisMonth} this month`, iconBg: "bg-blue-50", iconColor: "text-blue-600", trend: "up" as const },
-		{ label: "Estimated Value", value: `$${dashboard.estimatedValue.toLocaleString()}`, Icon: TrendingUp, sub: `+$${dashboard.valueAddedThisMonth.toLocaleString()} this month`, iconBg: "bg-emerald-50", iconColor: "text-emerald-600", trend: "up" as const },
-		{ label: "Rooms Tracked", value: String(dashboard.roomsTracked), Icon: Home, sub: "All rooms active", iconBg: "bg-violet-50", iconColor: "text-violet-600", trend: "neutral" as const },
-		{ label: "Missing Info", value: String(dashboard.missingInfo), Icon: Activity, sub: "Needs attention", iconBg: "bg-amber-50", iconColor: "text-amber-600", trend: "warn" as const },
-		{ label: "Added This Month", value: String(dashboard.addedThisMonth), Icon: Clock, sub: "Current month", iconBg: "bg-pink-50", iconColor: "text-pink-600", trend: "up" as const },
-	];
+  const categoryBreakdown = dashboard.categories.map((category) => ({
+    ...category,
+    pct: dashboard.totalItems ? Math.round((category.count / dashboard.totalItems) * 100) : 0,
+  }));
+  const stats = [
+    {
+      label: "Total Items",
+      value: String(dashboard.totalItems),
+      Icon: Package,
+      sub: `+${dashboard.addedThisMonth} this month`,
+      iconBg: "bg-blue-50",
+      iconColor: "text-blue-600",
+      trend: "up" as const,
+    },
+    {
+      label: "Estimated Value",
+      value: `$${dashboard.estimatedValue.toLocaleString()}`,
+      Icon: TrendingUp,
+      sub: `+$${dashboard.valueAddedThisMonth.toLocaleString()} this month`,
+      iconBg: "bg-emerald-50",
+      iconColor: "text-emerald-600",
+      trend: "up" as const,
+    },
+    {
+      label: "Rooms Tracked",
+      value: String(dashboard.roomsTracked),
+      Icon: Home,
+      sub: "All rooms active",
+      iconBg: "bg-violet-50",
+      iconColor: "text-violet-600",
+      trend: "neutral" as const,
+    },
+    {
+      label: "Missing Info",
+      value: String(dashboard.missingInfo),
+      Icon: Activity,
+      sub: "Needs attention",
+      iconBg: "bg-amber-50",
+      iconColor: "text-amber-600",
+      trend: "warn" as const,
+    },
+    {
+      label: "Added This Month",
+      value: String(dashboard.addedThisMonth),
+      Icon: Clock,
+      sub: "Current month",
+      iconBg: "bg-pink-50",
+      iconColor: "text-pink-600",
+      trend: "up" as const,
+    },
+  ];
 
   function handleNavSelect(id: string) {
     setActiveNav(id);
@@ -87,14 +130,10 @@ export default function DashboardPage({
   }
 
   return (
-    <div
-      className="min-h-screen bg-background text-foreground"
-      style={{ fontFamily: "'Figtree', sans-serif" }}
-    >
+    <div className="min-h-screen bg-background text-foreground">
       <TopNav onSignOut={onSignOut} onSettings={onSettings} onNavigate={onNavigate} />
 
       <main className="max-w-[1440px] mx-auto px-8 py-7 space-y-7">
-
         {/* Nav strip — uses FeatureCard internally */}
         <NavStrip active={activeNav} onSelect={handleNavSelect} />
 
@@ -105,8 +144,8 @@ export default function DashboardPage({
               Dashboard
             </p>
             <h1
-              className="text-[28px] font-bold text-foreground leading-tight"
-              style={{ letterSpacing: "-0.03em", fontFamily: "'Instrument Serif', serif" }}
+              className="font-display text-[28px] text-foreground leading-tight"
+              style={{ letterSpacing: "-0.03em" }}
             >
               Welcome back, {displayName || "there"}
             </h1>
@@ -122,7 +161,10 @@ export default function DashboardPage({
               <Package size={14} />
               View Inventory
             </button>
-            <button onClick={() => onNavigate("addItem")} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors shadow-sm">
+            <button
+              onClick={() => onNavigate("addItem")}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors shadow-sm"
+            >
               <Plus size={14} />
               Add Item
             </button>
@@ -130,7 +172,11 @@ export default function DashboardPage({
         </div>
 
         {/* Stat cards */}
-		{dashboardError && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{dashboardError}</div>}
+        {dashboardError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {dashboardError}
+          </div>
+        )}
         <div className="grid grid-cols-5 gap-4">
           {stats.map((s) => (
             <StatCard key={s.label} {...s} />
@@ -139,13 +185,14 @@ export default function DashboardPage({
 
         {/* Analytics row */}
         <div className="grid grid-cols-[1fr_380px] gap-5">
-
           {/* Bar chart */}
           <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-base font-semibold text-foreground">Items by Room</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Distribution across {dashboard.roomsTracked} tracked rooms</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Distribution across {dashboard.roomsTracked} tracked rooms
+                </p>
               </div>
               <button className="text-xs text-accent font-medium flex items-center gap-1 hover:underline">
                 View all <ChevronRight size={12} />
@@ -175,12 +222,17 @@ export default function DashboardPage({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-medium text-foreground truncate">{cat.name}</span>
-                        <span className="text-[11px] text-muted-foreground ml-2 flex-shrink-0">{cat.count}</span>
+                        <span className="text-[11px] text-muted-foreground ml-2 flex-shrink-0">
+                          {cat.count}
+                        </span>
                       </div>
                       <div className="h-1 rounded-full bg-muted overflow-hidden">
                         <div
                           className="h-full rounded-full"
-                          style={{ width: `${cat.pct}%`, backgroundColor: categoryColors[i % categoryColors.length] }}
+                          style={{
+                            width: `${cat.pct}%`,
+                            backgroundColor: categoryColors[i % categoryColors.length],
+                          }}
                         />
                       </div>
                     </div>
@@ -214,7 +266,9 @@ export default function DashboardPage({
                     </div>
                   </div>
                 ))}
-				{dashboard.recentActivity.length === 0 && <p className="text-xs text-muted-foreground">No recent activity yet.</p>}
+                {dashboard.recentActivity.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No recent activity yet.</p>
+                )}
               </div>
             </div>
           </div>
@@ -236,7 +290,9 @@ export default function DashboardPage({
           </div>
 
           {(recentItemsLoading || recentItemsError) && (
-            <div className={`mb-4 px-4 py-3 rounded-xl border text-sm ${recentItemsError ? "bg-red-50 border-red-200 text-red-700" : "bg-muted/40 border-border text-muted-foreground"}`}>
+            <div
+              className={`mb-4 px-4 py-3 rounded-xl border text-sm ${recentItemsError ? "bg-red-50 border-red-200 text-red-700" : "bg-muted/40 border-border text-muted-foreground"}`}
+            >
               {recentItemsError ?? "Loading recently added items…"}
             </div>
           )}
@@ -247,11 +303,7 @@ export default function DashboardPage({
           )}
           <div className="grid grid-cols-3 gap-4 xl:grid-cols-6">
             {recentlyAddedItems.map((item) => (
-              <CompactItemCard
-                key={item.id}
-                {...item}
-                onClick={() => onItemSelect?.(item)}
-              />
+              <CompactItemCard key={item.id} {...item} onClick={() => onItemSelect?.(item)} />
             ))}
           </div>
         </div>

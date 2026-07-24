@@ -62,7 +62,13 @@ export const THEMES: AppTheme[] = [
       ring: "#3F5FE0",
       chartBar: "#D4DAFB",
     },
-    preview: { bg: "#F5F4F1", card: "#FFFFFF", text: "#16161A", accent: "#3F5FE0", border: "rgba(0,0,0,0.08)" },
+    preview: {
+      bg: "#F5F4F1",
+      card: "#FFFFFF",
+      text: "#16161A",
+      accent: "#3F5FE0",
+      border: "rgba(0,0,0,0.08)",
+    },
   },
   {
     id: "dark",
@@ -89,7 +95,13 @@ export const THEMES: AppTheme[] = [
       ring: "#7B9FFF",
       chartBar: "#3A4480",
     },
-    preview: { bg: "#131318", card: "#1C1C26", text: "#E2E1EC", accent: "#7B9FFF", border: "rgba(255,255,255,0.08)" },
+    preview: {
+      bg: "#131318",
+      card: "#1C1C26",
+      text: "#E2E1EC",
+      accent: "#7B9FFF",
+      border: "rgba(255,255,255,0.08)",
+    },
   },
   {
     id: "warm",
@@ -116,7 +128,13 @@ export const THEMES: AppTheme[] = [
       ring: "#C2783F",
       chartBar: "#EDCFB0",
     },
-    preview: { bg: "#FBF7F0", card: "#FFFBF5", text: "#2C2318", accent: "#C2783F", border: "rgba(139,90,43,0.13)" },
+    preview: {
+      bg: "#FBF7F0",
+      card: "#FFFBF5",
+      text: "#2C2318",
+      accent: "#C2783F",
+      border: "rgba(139,90,43,0.13)",
+    },
   },
   {
     id: "gray",
@@ -143,7 +161,13 @@ export const THEMES: AppTheme[] = [
       ring: "#3D3D3D",
       chartBar: "#C0C0C0",
     },
-    preview: { bg: "#F1F1F1", card: "#F9F9F9", text: "#111111", accent: "#3D3D3D", border: "rgba(0,0,0,0.10)" },
+    preview: {
+      bg: "#F1F1F1",
+      card: "#F9F9F9",
+      text: "#111111",
+      accent: "#3D3D3D",
+      border: "rgba(0,0,0,0.10)",
+    },
   },
   {
     id: "forest",
@@ -170,7 +194,13 @@ export const THEMES: AppTheme[] = [
       ring: "#4A7C59",
       chartBar: "#A8CEAF",
     },
-    preview: { bg: "#EFF4EE", card: "#F8FCF7", text: "#192E1B", accent: "#4A7C59", border: "rgba(40,90,50,0.11)" },
+    preview: {
+      bg: "#EFF4EE",
+      card: "#F8FCF7",
+      text: "#192E1B",
+      accent: "#4A7C59",
+      border: "rgba(40,90,50,0.11)",
+    },
   },
   {
     id: "ocean",
@@ -197,7 +227,13 @@ export const THEMES: AppTheme[] = [
       ring: "#2E70AA",
       chartBar: "#A8CCEB",
     },
-    preview: { bg: "#EEF4FB", card: "#F5FAFF", text: "#152030", accent: "#2E70AA", border: "rgba(25,80,140,0.10)" },
+    preview: {
+      bg: "#EEF4FB",
+      card: "#F5FAFF",
+      text: "#152030",
+      accent: "#2E70AA",
+      border: "rgba(25,80,140,0.10)",
+    },
   },
 ];
 

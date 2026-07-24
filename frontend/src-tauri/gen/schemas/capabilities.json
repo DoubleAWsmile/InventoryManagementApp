@@ -1,0 +1,1 @@
+{"main-window":{"identifier":"main-window","description":"Only core APIs and the inventory backend configuration command are exposed.","local":true,"windows":["main"],"permissions":["core:default"]}}

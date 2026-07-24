@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -10,10 +11,19 @@ import (
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/auth"
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/constants"
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/models"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/DoubleAWsmile/InventoryManagementApp/internal/repository"
 )
 
-func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+type currentUserContextKey struct{}
+
+// WithCurrentUser supplies an already authenticated user to shared handlers.
+// The desktop API uses this after validating its per-launch sidecar token.
+// Hosted requests continue through the session repository path below.
+func WithCurrentUser(ctx context.Context, user models.User) context.Context {
+	return context.WithValue(ctx, currentUserContextKey{}, user)
+}
+
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req models.LoginRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -29,36 +39,13 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user models.User
-	var passwordHash string
-
-	err := h.DB.QueryRow(r.Context(), `
-		SELECT 
-			u.id, 
-			u.email, 
-			u.display_name, 
-			u.created_at, 
-			u.updated_at,
-			ac.password_hash
-		FROM users u
-		JOIN auth_credentials ac
-			ON ac.user_id = u.id
-		WHERE u.email = $1
-	`, email).Scan(
-		&user.ID,
-		&user.Email,
-		&user.DisplayName,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-		&passwordHash,
-	)
-
+	credentials, err := h.users.GetCredentialsByEmail(r.Context(), email)
 	if err != nil {
 		http.Error(w, "Invalid email and/or password", http.StatusUnauthorized)
 		return
 	}
 
-	if !auth.CheckPassword(password, passwordHash) {
+	if !auth.CheckPassword(password, credentials.PasswordHash) {
 		http.Error(w, "Invalid email and/or password", http.StatusUnauthorized)
 		return
 	}
@@ -72,11 +59,9 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	tokenHash := auth.HashSessionToken(token)
 	expiresAt := time.Now().Add(constants.SessionTimeLimit * time.Hour)
 
-	_, err = h.DB.Exec(r.Context(), `
-		INSERT INTO sessions (user_id, token_hash, expires_at)
-		VALUES ($1, $2, $3)
-	`, user.ID, tokenHash, expiresAt)
-
+	err = h.sessions.Create(r.Context(), repository.CreateSessionParams{
+		UserID: credentials.User.ID, TokenHash: tokenHash, ExpiresAt: expiresAt,
+	})
 	if err != nil {
 		http.Error(w, "Failed to save session", http.StatusInternalServerError)
 		return
@@ -90,15 +75,14 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(models.AuthResponse{
-		User: user,
+		User: credentials.User,
 	})
 }
 
-func (h *UserHandler) GetCurrentUserFromRequest(r *http.Request) (models.User, error) {
-	return getCurrentUserFromRequest(h.DB, r)
-}
-
-func getCurrentUserFromRequest(db *pgxpool.Pool, r *http.Request) (models.User, error) {
+func getCurrentUserFromRequest(sessions repository.SessionRepository, r *http.Request) (models.User, error) {
+	if user, ok := r.Context().Value(currentUserContextKey{}).(models.User); ok && user.ID != "" {
+		return user, nil
+	}
 	token := auth.GetSessionToken(r)
 	if token == "" {
 		return models.User{}, errors.New("missing auth token")
@@ -106,29 +90,7 @@ func getCurrentUserFromRequest(db *pgxpool.Pool, r *http.Request) (models.User, 
 
 	tokenHash := auth.HashSessionToken(token)
 
-	var user models.User
-
-	err := db.QueryRow(r.Context(), `
-		SELECT 
-			u.id,
-			u.email,
-			u.display_name,
-			u.created_at,
-			u.updated_at
-		FROM sessions s
-		JOIN users u
-			ON u.id = s.user_id
-		WHERE s.token_hash = $1
-			AND s.revoked_at IS NULL
-			AND s.expires_at > NOW()
-	`, tokenHash).Scan(
-		&user.ID,
-		&user.Email,
-		&user.DisplayName,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-
+	user, err := sessions.GetUserByTokenHash(r.Context(), tokenHash, time.Now())
 	if err != nil {
 		return models.User{}, errors.New("invalid or expired session")
 	}

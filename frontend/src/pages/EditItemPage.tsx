@@ -7,7 +7,7 @@ interface EditItemPageProps {
   onSaved: (item: ApiItem) => void;
   onCancel: () => void;
   onSignOut: () => void;
-  onNavigate: (page: PageName) => void;
+  onNavigate: (page: PageName, value?: string) => void;
   onSettings?: () => void;
 }
 

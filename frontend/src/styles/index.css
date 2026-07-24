@@ -1,3 +1,94 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+
+/* Shared responsive page behavior. Keep page components focused on content while
+   desktop dashboards, detail rails, forms, and tables adapt consistently. */
+main {
+  width: 100%;
+  padding-left: clamp(1rem, 3vw, 2rem) !important;
+  padding-right: clamp(1rem, 3vw, 2rem) !important;
+}
+
+main > *,
+main .grid > *,
+main .flex > * {
+  min-width: 0;
+}
+
+main table {
+  width: 100%;
+}
+
+@media (max-width: 1279px) {
+  main .grid-cols-5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  main [class*="grid-cols-["] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  main .grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  main .settings-layout {
+    flex-direction: column;
+  }
+
+  main .settings-layout > :first-child {
+    width: 100% !important;
+    position: static !important;
+  }
+}
+
+@media (max-width: 900px) {
+  main .grid-cols-5,
+  main .grid-cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  main .overflow-hidden:has(> table) {
+    overflow-x: auto;
+  }
+
+  main table {
+    min-width: 680px;
+  }
+
+  main .items-start.justify-between,
+  main .items-end.justify-between {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 639px) {
+  main {
+    padding-top: 1.25rem !important;
+    padding-bottom: 1.25rem !important;
+  }
+
+  main .grid-cols-2,
+  main .grid-cols-3,
+  main .grid-cols-4,
+  main .grid-cols-5 {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  main .gap-7,
+  main .gap-6,
+  main .gap-5 {
+    gap: 1rem;
+  }
+
+  main button,
+  main input,
+  main select,
+  main textarea {
+    max-width: 100%;
+  }
+}

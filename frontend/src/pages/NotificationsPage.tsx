@@ -1,6 +1,14 @@
 import {
-  ChevronRight, Bell, CheckCheck, Trash2, Settings,
-  Package, ShieldAlert, AlertCircle, BarChart2, ShoppingCart,
+  ChevronRight,
+  Bell,
+  CheckCheck,
+  Trash2,
+  Settings,
+  Package,
+  ShieldAlert,
+  AlertCircle,
+  BarChart2,
+  ShoppingCart,
 } from "lucide-react";
 import { TopNav, NavStrip } from "../components/TopNav";
 import type { PageName } from "../types";
@@ -11,7 +19,8 @@ import { useState } from "react";
 
 /* ── Tab definitions ─────────────────────────────────────────────── */
 
-type TabId = "all" | "unread" | "reminders" | "low_stock" | "warranty" | "missing_info" | "summary" | "reminder";
+type TabId =
+  "all" | "unread" | "reminders" | "low_stock" | "warranty" | "missing_info" | "summary" | "reminder";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "all", label: "All" },
@@ -25,27 +34,39 @@ const TABS: { id: TabId; label: string }[] = [
 
 /* ── Type metadata ───────────────────────────────────────────────── */
 
-const TYPE_META: Record<NotifType, {
-  Icon: React.ComponentType<{ size?: number; className?: string }>;
-  iconBg: string;
-  iconColor: string;
-  label: string;
-}> = {
-  low_stock:    { Icon: Package,      iconBg: "bg-amber-100",   iconColor: "text-amber-600",   label: "Low Stock" },
-  warranty:     { Icon: ShieldAlert,  iconBg: "bg-blue-100",    iconColor: "text-blue-600",    label: "Warranty" },
-  missing_info: { Icon: AlertCircle,  iconBg: "bg-red-100",     iconColor: "text-red-600",     label: "Missing Info" },
-  summary:      { Icon: BarChart2,    iconBg: "bg-violet-100",  iconColor: "text-violet-600",  label: "Report" },
-  reminder:     { Icon: ShoppingCart, iconBg: "bg-emerald-100", iconColor: "text-emerald-600", label: "Reminder" },
+const TYPE_META: Record<
+  NotifType,
+  {
+    Icon: React.ComponentType<{ size?: number; className?: string }>;
+    iconBg: string;
+    iconColor: string;
+    label: string;
+  }
+> = {
+  low_stock: { Icon: Package, iconBg: "bg-amber-100", iconColor: "text-amber-600", label: "Low Stock" },
+  warranty: { Icon: ShieldAlert, iconBg: "bg-blue-100", iconColor: "text-blue-600", label: "Warranty" },
+  missing_info: { Icon: AlertCircle, iconBg: "bg-red-100", iconColor: "text-red-600", label: "Missing Info" },
+  summary: { Icon: BarChart2, iconBg: "bg-violet-100", iconColor: "text-violet-600", label: "Report" },
+  reminder: {
+    Icon: ShoppingCart,
+    iconBg: "bg-emerald-100",
+    iconColor: "text-emerald-600",
+    label: "Reminder",
+  },
 };
 
 /* ── Filter logic ────────────────────────────────────────────────── */
 
 function filterByTab(notifications: Notification[], tab: TabId): Notification[] {
   switch (tab) {
-    case "unread": return notifications.filter((n) => n.unread);
-    case "reminders": return notifications.filter((n) => n.type === "reminder" || n.type === "warranty");
-    case "all": return notifications;
-    default: return notifications.filter((n) => n.type === tab);
+    case "unread":
+      return notifications.filter((n) => n.unread);
+    case "reminders":
+      return notifications.filter((n) => n.type === "reminder" || n.type === "warranty");
+    case "all":
+      return notifications;
+    default:
+      return notifications.filter((n) => n.type === tab);
   }
 }
 
@@ -64,18 +85,23 @@ export default function NotificationsPage({ onSignOut, onNavigate, onSettings }:
   const visible = filterByTab(notifications, tab);
 
   return (
-    <div className="min-h-screen bg-background text-foreground" style={{ fontFamily: "'Figtree', sans-serif" }}>
+    <div className="min-h-screen bg-background text-foreground">
       <TopNav onSignOut={onSignOut} onSettings={onSettings} onNavigate={onNavigate} />
 
       <main className="max-w-[1440px] mx-auto px-8 py-7 space-y-6">
         <NavStrip
           active={PAGE_TO_NAV_ID["dashboard"] ?? ""}
-          onSelect={(id) => { const p = NAV_ID_TO_PAGE[id]; if (p) onNavigate(p); }}
+          onSelect={(id) => {
+            const p = NAV_ID_TO_PAGE[id];
+            if (p) onNavigate(p);
+          }}
         />
 
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <button onClick={() => onNavigate("dashboard")} className="hover:text-foreground transition-colors">Dashboard</button>
+          <button onClick={() => onNavigate("dashboard")} className="hover:text-foreground transition-colors">
+            Dashboard
+          </button>
           <ChevronRight size={13} />
           <span className="text-foreground font-medium">Notifications</span>
         </div>
@@ -83,11 +109,21 @@ export default function NotificationsPage({ onSignOut, onNavigate, onSettings }:
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-[26px] font-bold text-foreground leading-tight" style={{ letterSpacing: "-0.03em", fontFamily: "'Instrument Serif', serif" }}>
+            <h1
+              className="font-display text-[26px] text-foreground leading-tight"
+              style={{ letterSpacing: "-0.03em" }}
+            >
               Notifications
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {unreadCount > 0 ? <><span className="font-semibold text-foreground">{unreadCount}</span> unread notification{unreadCount !== 1 ? "s" : ""}</> : "All caught up"}
+              {unreadCount > 0 ? (
+                <>
+                  <span className="font-semibold text-foreground">{unreadCount}</span> unread notification
+                  {unreadCount !== 1 ? "s" : ""}
+                </>
+              ) : (
+                "All caught up"
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -96,14 +132,16 @@ export default function NotificationsPage({ onSignOut, onNavigate, onSettings }:
                 onClick={markAllRead}
                 className="flex items-center gap-2 h-9 px-4 rounded-xl border border-border bg-card text-sm font-semibold text-foreground hover:bg-muted transition-colors"
               >
-                <CheckCheck size={14} />Mark all read
+                <CheckCheck size={14} />
+                Mark all read
               </button>
             )}
             <button
               onClick={clearRead}
               className="flex items-center gap-2 h-9 px-4 rounded-xl border border-border bg-card text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
-              <Trash2 size={13} />Clear read
+              <Trash2 size={13} />
+              Clear read
             </button>
             <button className="w-9 h-9 flex items-center justify-center rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
               <Settings size={15} />
@@ -129,10 +167,12 @@ export default function NotificationsPage({ onSignOut, onNavigate, onSettings }:
               >
                 {t.label}
                 {count > 0 && (
-                  <span className={[
-                    "h-5 min-w-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center",
-                    tab === t.id ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground",
-                  ].join(" ")}>
+                  <span
+                    className={[
+                      "h-5 min-w-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center",
+                      tab === t.id ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground",
+                    ].join(" ")}
+                  >
                     {unread > 0 ? unread : count}
                   </span>
                 )}
@@ -173,11 +213,24 @@ export default function NotificationsPage({ onSignOut, onNavigate, onSettings }:
 
 /* ── Notification group ──────────────────────────────────────────── */
 
-function NotifGroup({ title, notifications, onRead }: { title: string; notifications: Notification[]; onRead: (id: string) => void }) {
+function NotifGroup({
+  title,
+  notifications,
+  onRead,
+}: {
+  title: string;
+  notifications: Notification[];
+  onRead: (id: string) => void;
+}) {
   if (notifications.length === 0) return null;
   return (
     <div>
-      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 pl-1" style={{ letterSpacing: "0.08em" }}>{title}</p>
+      <p
+        className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 pl-1"
+        style={{ letterSpacing: "0.08em" }}
+      >
+        {title}
+      </p>
       <div className="bg-card rounded-2xl border border-border shadow-sm divide-y divide-border/50 overflow-hidden">
         {notifications.map((n) => (
           <FullNotifRow key={n.id} notification={n} onRead={onRead} />
@@ -189,7 +242,13 @@ function NotifGroup({ title, notifications, onRead }: { title: string; notificat
 
 /* ── Full notification row ───────────────────────────────────────── */
 
-function FullNotifRow({ notification: n, onRead }: { notification: Notification; onRead: (id: string) => void }) {
+function FullNotifRow({
+  notification: n,
+  onRead,
+}: {
+  notification: Notification;
+  onRead: (id: string) => void;
+}) {
   const meta = TYPE_META[n.type];
 
   return (
@@ -201,12 +260,12 @@ function FullNotifRow({ notification: n, onRead }: { notification: Notification;
       ].join(" ")}
     >
       {/* Unread indicator */}
-      {n.unread && (
-        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-accent rounded-l-2xl" />
-      )}
+      {n.unread && <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-accent rounded-l-2xl" />}
 
       {/* Type icon */}
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${meta.iconBg}`}>
+      <div
+        className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${meta.iconBg}`}
+      >
         <meta.Icon size={18} className={meta.iconColor} />
       </div>
 
@@ -215,23 +274,26 @@ function FullNotifRow({ notification: n, onRead }: { notification: Notification;
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className={["text-sm leading-snug", n.unread ? "font-bold text-foreground" : "font-medium text-foreground/80"].join(" ")}>
+              <p
+                className={[
+                  "text-sm leading-snug",
+                  n.unread ? "font-bold text-foreground" : "font-medium text-foreground/80",
+                ].join(" ")}
+              >
                 {n.title}
               </p>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.iconBg} ${meta.iconColor}`}>
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.iconBg} ${meta.iconColor}`}
+              >
                 {meta.label}
               </span>
-              {n.unread && (
-                <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
-              )}
+              {n.unread && <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />}
             </div>
             <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{n.description}</p>
           </div>
           <div className="flex flex-col items-end gap-2 flex-shrink-0">
             <span className="text-[11px] text-muted-foreground whitespace-nowrap">{n.timestamp}</span>
-            {!n.unread && (
-              <span className="text-[10px] text-muted-foreground/50 font-medium">Read</span>
-            )}
+            {!n.unread && <span className="text-[10px] text-muted-foreground/50 font-medium">Read</span>}
           </div>
         </div>
         {n.actionLabel && (

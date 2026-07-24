@@ -4,10 +4,12 @@ export type PageName =
   | "dashboard"
   | "allItems"
   | "itemDetail"
-	| "editItem"
+  | "editItem"
   | "settings"
   | "rooms"
   | "categories"
+  | "categoryDetail"
+  | "roomDetail"
   | "addItem"
   | "wishlist"
   | "reports"
@@ -25,9 +27,9 @@ export type IconComponent = ComponentType<IconProps>;
 export interface Item {
   id: string | number;
   name: string;
-	categoryId?: string;
+  categoryId?: string;
   category: string;
-	roomId?: string;
+  roomId?: string;
   room: string;
   qty: number;
   value: number;

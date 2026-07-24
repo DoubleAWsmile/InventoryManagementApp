@@ -1,29 +1,49 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
-  Palette, User, Package, Bell, Shield, Tag, Zap, Settings,
-  ChevronRight, Check, Plus, Trash2, Download, LogOut,
-  Lock, Mail, AlertTriangle,
-  Grid, List, Camera,
-  FileText, Archive, Wifi, Layers, RefreshCw,
+  Palette,
+  User,
+  Package,
+  Bell,
+  Shield,
+  Tag,
+  Zap,
+  Settings,
+  ChevronRight,
+  Check,
+  Plus,
+  Trash2,
+  Download,
+  LogOut,
+  Lock,
+  Mail,
+  AlertTriangle,
+  Grid,
+  List,
+  Camera,
+  FileText,
+  Archive,
+  Wifi,
+  Layers,
+  RefreshCw,
 } from "lucide-react";
 import { TopNav, NavStrip } from "../components/TopNav";
 import type { PageName } from "../types";
 import { useTheme } from "../theme/ThemeContext";
 import { useInventoryPrefs } from "../context/InventoryPrefsContext";
 
-import { logout, deleteMe } from "../services/api";
+import {
+  logout,
+  deleteMe,
+  getSettings,
+  updateSettings,
+  resetSettings,
+  type UserSettings,
+} from "../services/api";
 
 /* ── Sidebar section definitions ─────────────────────────────────── */
 
 type SectionId =
-  | "appearance"
-  | "account"
-  | "inventory"
-  | "notifications"
-  | "privacy"
-  | "tags"
-  | "integrations"
-  | "advanced";
+  "appearance" | "account" | "inventory" | "notifications" | "privacy" | "tags" | "integrations" | "advanced";
 
 interface SidebarSection {
   id: SectionId;
@@ -36,7 +56,7 @@ const SIDEBAR_SECTIONS: SidebarSection[] = [
   { id: "appearance", label: "Appearance", Icon: Palette },
   { id: "account", label: "Account", Icon: User },
   { id: "inventory", label: "Inventory Preferences", Icon: Package },
-  { id: "notifications", label: "Notifications", Icon: Bell, badge: "3" },
+  { id: "notifications", label: "Notifications", Icon: Bell },
   { id: "privacy", label: "Privacy & Data", Icon: Shield },
   { id: "tags", label: "Tags & Categories", Icon: Tag },
   { id: "integrations", label: "Integrations", Icon: Zap },
@@ -54,30 +74,22 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
       role="switch"
       aria-checked={on}
       className={[
-        "relative flex-shrink-0 w-10 h-5.5 rounded-full border-2 transition-all duration-200",
+        "relative flex-shrink-0 w-10 h-5.5 p-0 rounded-full border-2 transition-all duration-200",
         on ? "bg-accent border-accent" : "bg-muted border-border",
       ].join(" ")}
       style={{ width: "40px", height: "22px" }}
     >
       <span
         className={[
-          "absolute top-0.5 left-0.5 w-[16px] h-[16px] rounded-full bg-white shadow-sm transition-transform duration-200",
-          on ? "translate-x-[18px]" : "translate-x-0",
+          "absolute top-1/2 left-[0px] w-[16px] h-[16px] -translate-y-1/2 rounded-full bg-white shadow-sm transition-transform duration-200",
+          on ? "translate-x-[20px]" : "translate-x-0",
         ].join(" ")}
       />
     </button>
   );
 }
 
-function SettingRow({
-  label,
-  desc,
-  children,
-}: {
-  label: string;
-  desc?: string;
-  children: React.ReactNode;
-}) {
+function SettingRow({ label, desc, children }: { label: string; desc?: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between py-4 border-b border-border/50 last:border-0">
       <div className="flex-1 min-w-0 pr-6">
@@ -92,7 +104,9 @@ function SettingRow({
 function SectionHeader({ title, desc }: { title: string; desc: string }) {
   return (
     <div className="mb-6">
-      <h2 className="text-[18px] font-bold text-foreground" style={{ letterSpacing: "-0.025em" }}>{title}</h2>
+      <h2 className="text-[18px] font-bold text-foreground" style={{ letterSpacing: "-0.025em" }}>
+        {title}
+      </h2>
       <p className="text-sm text-muted-foreground mt-0.5">{desc}</p>
     </div>
   );
@@ -100,7 +114,9 @@ function SectionHeader({ title, desc }: { title: string; desc: string }) {
 
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={["bg-card rounded-2xl border border-border shadow-sm", className].filter(Boolean).join(" ")}>
+    <div
+      className={["bg-card rounded-2xl border border-border shadow-sm", className].filter(Boolean).join(" ")}
+    >
       {children}
     </div>
   );
@@ -111,7 +127,12 @@ function CardSection({ title, children }: { title?: string; children: React.Reac
     <div>
       {title && (
         <div className="px-5 pt-5 pb-0">
-          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest" style={{ letterSpacing: "0.08em" }}>{title}</p>
+          <p
+            className="text-xs font-bold text-muted-foreground uppercase tracking-widest"
+            style={{ letterSpacing: "0.08em" }}
+          >
+            {title}
+          </p>
         </div>
       )}
       <div className="px-5 pb-1">{children}</div>
@@ -121,39 +142,53 @@ function CardSection({ title, children }: { title?: string; children: React.Reac
 
 /* ── Section: Appearance ─────────────────────────────────────────── */
 
-function AppearanceSection() {
+function AppearanceSection({
+  reduceMotion,
+  setReduceMotion,
+}: {
+  reduceMotion: boolean;
+  setReduceMotion: (value: boolean) => void;
+}) {
   const {
-    savedThemeId, themes,
-    setThemeById, useSystemTheme, setUseSystemTheme,
+    savedThemeId,
+    themes,
+    setThemeById,
+    useSystemTheme,
+    setUseSystemTheme,
     tokens,
-    fontSize, setFontSize,
-    accentColor, setAccentColor,
+    fontSize,
+    setFontSize,
+    accentColor,
+    setAccentColor,
   } = useTheme();
 
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const [draftFontSize, setDraftFontSize] = useState(fontSize);
   const colorInputRef = useRef<HTMLInputElement>(null);
 
   const currentAccent = accentColor ?? tokens.accent;
 
   // Theme defaults + a few extras
   const ACCENT_SWATCHES = [
-    { color: "#3F5FE0", label: "Indigo" },      // light theme
-    { color: "#7B9FFF", label: "Periwinkle" },  // dark theme
-    { color: "#2E70AA", label: "Ocean" },        // ocean theme
-    { color: "#4A7C59", label: "Forest" },       // forest theme
-    { color: "#C2783F", label: "Amber" },        // warm theme
-    { color: "#3D3D3D", label: "Charcoal" },    // gray theme
+    { color: "#3F5FE0", label: "Indigo" }, // light theme
+    { color: "#7B9FFF", label: "Periwinkle" }, // dark theme
+    { color: "#2E70AA", label: "Ocean" }, // ocean theme
+    { color: "#4A7C59", label: "Forest" }, // forest theme
+    { color: "#C2783F", label: "Amber" }, // warm theme
+    { color: "#3D3D3D", label: "Charcoal" }, // gray theme
     { color: "#A855F7", label: "Violet" },
     { color: "#EC4899", label: "Pink" },
     { color: "#111111", label: "Black" },
   ];
 
-  const matchedSwatch = ACCENT_SWATCHES.find(s => s.color.toLowerCase() === currentAccent.toLowerCase());
+  const matchedSwatch = ACCENT_SWATCHES.find((s) => s.color.toLowerCase() === currentAccent.toLowerCase());
   const accentLabel = matchedSwatch?.label ?? (accentColor ? "Custom" : "Theme default");
 
   return (
     <div className="space-y-5">
-      <SectionHeader title="Appearance" desc="Control how HomeVault looks and feels across your experience." />
+      <SectionHeader
+        title="Appearance"
+        desc="Control how HomeVault looks and feels across your experience."
+      />
 
       {/* Theme selector */}
       <Card>
@@ -165,7 +200,12 @@ function AppearanceSection() {
                 Manual selection is disabled while "Use system theme" is on.
               </div>
             )}
-            <div className={["grid grid-cols-3 gap-3", useSystemTheme ? "opacity-50 pointer-events-none select-none" : ""].join(" ")}>
+            <div
+              className={[
+                "grid grid-cols-3 gap-3",
+                useSystemTheme ? "opacity-50 pointer-events-none select-none" : "",
+              ].join(" ")}
+            >
               {themes.map((t) => {
                 const isSelected = !useSystemTheme && savedThemeId === t.id;
                 const p = t.preview;
@@ -181,25 +221,37 @@ function AppearanceSection() {
                     ].join(" ")}
                   >
                     {/* Mini preview */}
-                    <div className="h-[88px] p-2.5" style={{ background: p.bg }}>
+                    <div className="h-[88px] p-[10px]" style={{ background: p.bg }}>
                       <div
-                        className="h-3.5 rounded-md mb-2 flex items-center px-2 gap-1.5"
+                        className="h-[14px] rounded-[6px] mb-[8px] flex items-center px-[8px] gap-[6px]"
                         style={{ background: p.card, border: `1px solid ${p.border}` }}
                       >
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: p.accent }} />
-                        <div className="flex-1 h-1 rounded-full" style={{ background: p.border }} />
-                        <div className="w-3 h-1 rounded-full" style={{ background: p.accent, opacity: 0.7 }} />
+                        <div className="w-[6px] h-[6px] rounded-full" style={{ background: p.accent }} />
+                        <div className="flex-1 h-[4px] rounded-full" style={{ background: p.border }} />
+                        <div
+                          className="w-[12px] h-[4px] rounded-full"
+                          style={{ background: p.accent, opacity: 0.7 }}
+                        />
                       </div>
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-[6px]">
                         {[1, 2, 3].map((n) => (
                           <div
                             key={n}
-                            className="flex-1 h-10 rounded-lg p-1.5"
+                            className="flex-1 h-[40px] rounded-[8px] p-[6px]"
                             style={{ background: p.card, border: `1px solid ${p.border}` }}
                           >
-                            <div className="w-3 h-1.5 rounded-full mb-1" style={{ background: p.accent, opacity: n === 1 ? 0.9 : 0.35 }} />
-                            <div className="w-full h-1 rounded-full" style={{ background: p.text, opacity: 0.1 }} />
-                            <div className="w-3/4 h-1 rounded-full mt-0.5" style={{ background: p.text, opacity: 0.07 }} />
+                            <div
+                              className="w-[12px] h-[6px] rounded-full mb-[4px]"
+                              style={{ background: p.accent, opacity: n === 1 ? 0.9 : 0.35 }}
+                            />
+                            <div
+                              className="w-full h-[4px] rounded-full"
+                              style={{ background: p.text, opacity: 0.1 }}
+                            />
+                            <div
+                              className="w-3/4 h-[4px] rounded-full mt-[2px]"
+                              style={{ background: p.text, opacity: 0.07 }}
+                            />
                           </div>
                         ))}
                       </div>
@@ -208,11 +260,21 @@ function AppearanceSection() {
                     <div className="px-3 py-2 border-t" style={{ borderColor: p.border, background: p.card }}>
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-xs font-bold leading-tight" style={{ color: p.text }}>{t.label}</p>
-                          <p className="text-[10px] mt-0.5 leading-tight" style={{ color: p.text, opacity: 0.5 }}>{t.desc}</p>
+                          <p className="text-xs font-bold leading-tight" style={{ color: p.text }}>
+                            {t.label}
+                          </p>
+                          <p
+                            className="text-[0.625rem] mt-0.5 leading-tight"
+                            style={{ color: p.text, opacity: 0.5 }}
+                          >
+                            {t.desc}
+                          </p>
                         </div>
                         {isSelected && (
-                          <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: p.accent }}>
+                          <div
+                            className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ background: p.accent }}
+                          >
                             <Check size={10} color="#fff" />
                           </div>
                         )}
@@ -237,14 +299,20 @@ function AppearanceSection() {
                     key={swatch.label}
                     onClick={() => setAccentColor(swatch.color)}
                     title={swatch.label}
-                    className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-150 hover:scale-105"
+                    className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-150 hover:scale-105"
                     style={{
                       background: swatch.color,
                       boxShadow: isSelected ? `0 0 0 3px var(--card), 0 0 0 5px ${swatch.color}` : undefined,
                       transform: isSelected ? "scale(1.12)" : undefined,
                     }}
                   >
-                    {isSelected && <Check size={13} color={swatch.color === "#111111" || swatch.color === "#3D3D3D" ? "#aaa" : "#fff"} style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.35))" }} />}
+                    {isSelected && (
+                      <Check
+                        size={13}
+                        color={swatch.color === "#111111" || swatch.color === "#3D3D3D" ? "#aaa" : "#fff"}
+                        style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.35))" }}
+                      />
+                    )}
                   </button>
                 );
               })}
@@ -254,17 +322,30 @@ function AppearanceSection() {
                 <button
                   onClick={() => colorInputRef.current?.click()}
                   title="Custom color"
-                  className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-150 hover:scale-105 border-2 border-white/60 shadow-sm overflow-hidden"
+                  className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-150 hover:scale-105 border-2 border-white/60 shadow-sm overflow-hidden"
                   style={{
-                    background: "conic-gradient(from 0deg, #EF4444, #F59E0B, #10B981, #3F5FE0, #A855F7, #EC4899, #EF4444)",
-                    boxShadow: accentColor && !matchedSwatch ? `0 0 0 3px var(--card), 0 0 0 5px ${accentColor}` : undefined,
+                    background:
+                      "conic-gradient(from 0deg, #EF4444, #F59E0B, #10B981, #3F5FE0, #A855F7, #EC4899, #EF4444)",
+                    boxShadow:
+                      accentColor && !matchedSwatch
+                        ? `0 0 0 3px var(--card), 0 0 0 5px ${accentColor}`
+                        : undefined,
                     transform: accentColor && !matchedSwatch ? "scale(1.12)" : undefined,
                   }}
                 >
-                  {accentColor && !matchedSwatch
-                    ? <Check size={13} color="#fff" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.6))" }} />
-                    : <Plus size={12} color="#fff" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.6))" }} />
-                  }
+                  {accentColor && !matchedSwatch ? (
+                    <Check
+                      size={13}
+                      color="#fff"
+                      style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.6))" }}
+                    />
+                  ) : (
+                    <Plus
+                      size={12}
+                      color="#fff"
+                      style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.6))" }}
+                    />
+                  )}
                 </button>
                 <input
                   ref={colorInputRef}
@@ -294,10 +375,7 @@ function AppearanceSection() {
           >
             <Toggle on={useSystemTheme} onToggle={() => setUseSystemTheme(!useSystemTheme)} />
           </SettingRow>
-          <SettingRow
-            label="Reduce motion"
-            desc="Minimize animations and transitions throughout the app"
-          >
+          <SettingRow label="Reduce motion" desc="Minimize animations and transitions throughout the app">
             <Toggle on={reduceMotion} onToggle={() => setReduceMotion((v) => !v)} />
           </SettingRow>
         </CardSection>
@@ -306,19 +384,41 @@ function AppearanceSection() {
 
         <CardSection title="Text">
           <SettingRow label="Font size" desc="Base text size across the interface">
-            <div className="flex items-center h-8 rounded-lg border border-border bg-muted/50 p-0.5 gap-0.5">
-              {(["small", "default", "large"] as const).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setFontSize(s)}
-                  className={[
-                    "h-7 px-3 rounded-md text-xs font-semibold capitalize transition-all",
-                    fontSize === s ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-                  ].join(" ")}
+            <div className="w-[360px] max-w-full">
+              <div className="mb-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-center overflow-hidden">
+                <p
+                  className="font-semibold text-foreground leading-snug"
+                  style={{ fontSize: `${draftFontSize}px` }}
                 >
-                  {s}
+                  This is how text size will change across your interface.
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div style={{ width: "176px" }}>
+                  <input
+                    type="range"
+                    max="21"
+                    min="13"
+                    step="0.5"
+                    value={draftFontSize}
+                    onChange={(e) => setDraftFontSize(Number(e.target.value))}
+                    aria-label="Font size"
+                    aria-valuetext={`${draftFontSize}px`}
+                    className="settings-font-slider"
+                  />
+                  <div className="mt-1 flex justify-between text-xs font-semibold text-muted-foreground">
+                    <span>Small</span>
+                    <span>Large</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setFontSize(draftFontSize)}
+                  disabled={draftFontSize === fontSize}
+                  className="h-9 px-4 rounded-lg bg-accent text-accent-foreground text-xs font-semibold transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Apply
                 </button>
-              ))}
+              </div>
             </div>
           </SettingRow>
         </CardSection>
@@ -329,10 +429,7 @@ function AppearanceSection() {
 
 /* ── Section: Account ────────────────────────────────────────────── */
 
-function AccountSection({ accountEmail, onSignOut, }: {
-  accountEmail: string;
-  onSignOut: () => void;
-}) {
+function AccountSection({ accountEmail, onSignOut }: { accountEmail: string; onSignOut: () => void }) {
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -343,8 +440,7 @@ function AccountSection({ accountEmail, onSignOut, }: {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const canConfirmDelete =
-    deleteEmail.trim().toLowerCase() === accountEmail.trim().toLowerCase()
-    && deletePassword.length > 0;
+    deleteEmail.trim().toLowerCase() === accountEmail.trim().toLowerCase() && deletePassword.length > 0;
 
   function cancelDelete() {
     setShowDeleteConfirm(false);
@@ -405,14 +501,18 @@ function AccountSection({ accountEmail, onSignOut, }: {
               <div className="flex-1 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5">First Name</label>
+                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                      First Name
+                    </label>
                     <input
                       defaultValue="Sarah"
                       className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent/50 transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Last Name</label>
+                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                      Last Name
+                    </label>
                     <input
                       defaultValue="Reynolds"
                       className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-accent/50 transition-all"
@@ -420,9 +520,14 @@ function AccountSection({ accountEmail, onSignOut, }: {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Email Address</label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                    Email Address
+                  </label>
                   <div className="relative">
-                    <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <Mail
+                      size={13}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                    />
                     <input
                       defaultValue={accountEmail}
                       type="email"
@@ -449,7 +554,8 @@ function AccountSection({ accountEmail, onSignOut, }: {
               onClick={() => setShowChangePassword((v) => !v)}
               className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg border border-border bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors"
             >
-              <Lock size={11} />Change Password
+              <Lock size={11} />
+              Change Password
             </button>
           </SettingRow>
           {showChangePassword && (
@@ -468,13 +574,19 @@ function AccountSection({ accountEmail, onSignOut, }: {
                 <button className="h-8 px-4 rounded-lg bg-accent text-accent-foreground text-xs font-semibold hover:bg-accent/90 transition-colors">
                   Update Password
                 </button>
-                <button onClick={() => setShowChangePassword(false)} className="h-8 px-3.5 rounded-lg border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                <button
+                  onClick={() => setShowChangePassword(false)}
+                  className="h-8 px-3.5 rounded-lg border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
                   Cancel
                 </button>
               </div>
             </div>
           )}
-          <SettingRow label="Two-Factor Authentication" desc="Not yet enabled — add an extra layer of security">
+          <SettingRow
+            label="Two-Factor Authentication"
+            desc="Not yet enabled — add an extra layer of security"
+          >
             <button className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg border border-border bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors">
               Set Up 2FA
             </button>
@@ -497,9 +609,7 @@ function AccountSection({ accountEmail, onSignOut, }: {
             </button>
           </SettingRow>
 
-          {signOutError && (
-            <p className="pb-4 text-xs text-red-600">{signOutError}</p>
-          )}
+          {signOutError && <p className="pb-4 text-xs text-red-600">{signOutError}</p>}
         </CardSection>
       </Card>
 
@@ -516,7 +626,8 @@ function AccountSection({ accountEmail, onSignOut, }: {
                 onClick={() => setShowDeleteConfirm(true)}
                 className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors"
               >
-                <Trash2 size={11} />Delete Account
+                <Trash2 size={11} />
+                Delete Account
               </button>
             </SettingRow>
           ) : (
@@ -524,7 +635,9 @@ function AccountSection({ accountEmail, onSignOut, }: {
               <div className="flex items-start gap-3 mb-4 p-3 rounded-xl bg-red-50 border border-red-200">
                 <AlertTriangle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-bold text-red-700">Are you sure you want to delete your account?</p>
+                  <p className="text-sm font-bold text-red-700">
+                    Are you sure you want to delete your account?
+                  </p>
                   <p className="text-xs text-red-600/80 mt-0.5">
                     Enter your account email and password to confirm. This cannot be undone.
                   </p>
@@ -533,7 +646,10 @@ function AccountSection({ accountEmail, onSignOut, }: {
 
               <div className="space-y-3">
                 <div>
-                  <label htmlFor="delete-account-email" className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                  <label
+                    htmlFor="delete-account-email"
+                    className="block text-xs font-semibold text-muted-foreground mb-1.5"
+                  >
                     Email Address
                   </label>
                   <input
@@ -548,7 +664,10 @@ function AccountSection({ accountEmail, onSignOut, }: {
                   />
                 </div>
                 <div>
-                  <label htmlFor="delete-account-password" className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                  <label
+                    htmlFor="delete-account-password"
+                    className="block text-xs font-semibold text-muted-foreground mb-1.5"
+                  >
                     Password
                   </label>
                   <input
@@ -579,9 +698,7 @@ function AccountSection({ accountEmail, onSignOut, }: {
                     Cancel
                   </button>
                 </div>
-                {deleteError && (
-                  <p className="text-xs text-red-600 pt-1">{deleteError}</p>
-                )}
+                {deleteError && <p className="text-xs text-red-600 pt-1">{deleteError}</p>}
               </div>
             </div>
           )}
@@ -595,23 +712,33 @@ function AccountSection({ accountEmail, onSignOut, }: {
 
 function InventorySection() {
   const {
-    defaultView, setDefaultView,
-    defaultSort, setDefaultSort,
-    currency, setCurrency,
-    showValues, setShowValues,
-    showLowStock, setShowLowStock,
-    showMissingInfo, setShowMissingInfo,
+    defaultView,
+    setDefaultView,
+    defaultSort,
+    setDefaultSort,
+    currency,
+    setCurrency,
+    showValues,
+    setShowValues,
+    showLowStock,
+    setShowLowStock,
+    showMissingInfo,
+    setShowMissingInfo,
   } = useInventoryPrefs();
 
   const SELECT_STYLE = {
-    backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6A72' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
+    backgroundImage:
+      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6A72' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
     backgroundRepeat: "no-repeat" as const,
     backgroundPosition: "right 10px center",
   };
 
   return (
     <div className="space-y-5">
-      <SectionHeader title="Inventory Preferences" desc="Configure how your inventory is displayed and managed." />
+      <SectionHeader
+        title="Inventory Preferences"
+        desc="Configure how your inventory is displayed and managed."
+      />
 
       <Card>
         <CardSection title="Display">
@@ -619,15 +746,27 @@ function InventorySection() {
             <div className="flex items-center h-8 rounded-lg border border-border bg-muted/50 p-0.5 gap-0.5">
               <button
                 onClick={() => setDefaultView("grid")}
-                className={["h-7 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all", defaultView === "grid" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"].join(" ")}
+                className={[
+                  "h-7 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all",
+                  defaultView === "grid"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                ].join(" ")}
               >
-                <Grid size={11} />Grid
+                <Grid size={11} />
+                Grid
               </button>
               <button
                 onClick={() => setDefaultView("list")}
-                className={["h-7 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all", defaultView === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"].join(" ")}
+                className={[
+                  "h-7 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all",
+                  defaultView === "list"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                ].join(" ")}
               >
-                <List size={11} />List
+                <List size={11} />
+                List
               </button>
             </div>
           </SettingRow>
@@ -682,16 +821,23 @@ function InventorySection() {
 
 /* ── Section: Notifications ──────────────────────────────────────── */
 
-function NotificationsSection() {
-  const [prefs, setPrefs] = useState({
-    lowStock: true,
-    warrantyExpiry: true,
-    missingInfo: false,
-    monthlySummary: true,
-    newFeatures: false,
-    securityAlerts: true,
-  });
-  const toggle = (key: keyof typeof prefs) => setPrefs((p) => ({ ...p, [key]: !p[key] }));
+interface NotificationPreferences {
+  lowStock: boolean;
+  warrantyExpiry: boolean;
+  missingInfo: boolean;
+  monthlySummary: boolean;
+  newFeatures: boolean;
+  securityAlerts: boolean;
+}
+
+function NotificationsSection({
+  prefs,
+  setPrefs,
+}: {
+  prefs: NotificationPreferences;
+  setPrefs: React.Dispatch<React.SetStateAction<NotificationPreferences>>;
+}) {
+  const toggle = (key: keyof NotificationPreferences) => setPrefs((p) => ({ ...p, [key]: !p[key] }));
 
   return (
     <div className="space-y-5">
@@ -699,13 +845,22 @@ function NotificationsSection() {
 
       <Card>
         <CardSection title="Inventory Alerts">
-          <SettingRow label="Low-stock reminders" desc="Get notified when items fall below their minimum quantity">
+          <SettingRow
+            label="Low-stock reminders"
+            desc="Get notified when items fall below their minimum quantity"
+          >
             <Toggle on={prefs.lowStock} onToggle={() => toggle("lowStock")} />
           </SettingRow>
-          <SettingRow label="Warranty expiration reminders" desc="Be alerted 30 days before a warranty expires">
+          <SettingRow
+            label="Warranty expiration reminders"
+            desc="Be alerted 30 days before a warranty expires"
+          >
             <Toggle on={prefs.warrantyExpiry} onToggle={() => toggle("warrantyExpiry")} />
           </SettingRow>
-          <SettingRow label="Missing item information" desc="Get reminded to complete items that are missing details">
+          <SettingRow
+            label="Missing item information"
+            desc="Get reminded to complete items that are missing details"
+          >
             <Toggle on={prefs.missingInfo} onToggle={() => toggle("missingInfo")} />
           </SettingRow>
         </CardSection>
@@ -713,7 +868,10 @@ function NotificationsSection() {
         <div className="border-t border-border/50 mx-5" />
 
         <CardSection title="Reports & Updates">
-          <SettingRow label="Monthly inventory summary" desc="A brief digest of your inventory changes each month">
+          <SettingRow
+            label="Monthly inventory summary"
+            desc="A brief digest of your inventory changes each month"
+          >
             <Toggle on={prefs.monthlySummary} onToggle={() => toggle("monthlySummary")} />
           </SettingRow>
           <SettingRow label="New features & tips" desc="Occasional emails about HomeVault updates">
@@ -729,8 +887,11 @@ function NotificationsSection() {
       <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-accent/8 border border-accent/15">
         <Bell size={14} className="text-accent flex-shrink-0" />
         <p className="text-sm text-foreground">
-          <span className="font-semibold">{Object.values(prefs).filter(Boolean).length}</span> notification types active.
-          <button className="text-accent font-semibold ml-1.5 hover:underline">Manage delivery channels</button>
+          <span className="font-semibold">{Object.values(prefs).filter(Boolean).length}</span> notification
+          types active.
+          <button className="text-accent font-semibold ml-1.5 hover:underline">
+            Manage delivery channels
+          </button>
         </p>
       </div>
     </div>
@@ -742,28 +903,42 @@ function NotificationsSection() {
 function PrivacySection() {
   return (
     <div className="space-y-5">
-      <SectionHeader title="Privacy & Data" desc="Control your data, export records, and manage your account." />
+      <SectionHeader
+        title="Privacy & Data"
+        desc="Control your data, export records, and manage your account."
+      />
 
       <Card>
         <CardSection title="Your Data">
-          <SettingRow label="Export inventory data" desc="Download a full CSV or JSON export of your inventory">
+          <SettingRow
+            label="Export inventory data"
+            desc="Download a full CSV or JSON export of your inventory"
+          >
             <button className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg border border-border bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors">
-              <Download size={11} />Export CSV
+              <Download size={11} />
+              Export CSV
             </button>
           </SettingRow>
-          <SettingRow label="Download receipts & images" desc="Get a ZIP archive of all uploaded documents and photos">
+          <SettingRow
+            label="Download receipts & images"
+            desc="Get a ZIP archive of all uploaded documents and photos"
+          >
             <button className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg border border-border bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors">
-              <Archive size={11} />Download ZIP
+              <Archive size={11} />
+              Download ZIP
             </button>
           </SettingRow>
-          <SettingRow label="Clear local cache" desc="Remove cached data from your browser — your inventory is safe">
+          <SettingRow
+            label="Clear local cache"
+            desc="Remove cached data from your browser — your inventory is safe"
+          >
             <button className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg border border-border bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors">
-              <RefreshCw size={11} />Clear Cache
+              <RefreshCw size={11} />
+              Clear Cache
             </button>
           </SettingRow>
         </CardSection>
       </Card>
-
     </div>
   );
 }
@@ -771,12 +946,24 @@ function PrivacySection() {
 /* ── Section: Tags & Categories ──────────────────────────────────── */
 
 const TAG_COLORS_PALETTE = [
-  "bg-blue-100 text-blue-700", "bg-amber-100 text-amber-700",
-  "bg-pink-100 text-pink-700", "bg-violet-100 text-violet-700",
-  "bg-emerald-100 text-emerald-700", "bg-orange-100 text-orange-700",
+  "bg-blue-100 text-blue-700",
+  "bg-amber-100 text-amber-700",
+  "bg-pink-100 text-pink-700",
+  "bg-violet-100 text-violet-700",
+  "bg-emerald-100 text-emerald-700",
+  "bg-orange-100 text-orange-700",
 ];
 
-const INITIAL_TAGS = ["Electronics", "Tools", "Clothing", "Documents", "Warranty", "Frequently Used", "Outdoor", "Kitchen"];
+const INITIAL_TAGS = [
+  "Electronics",
+  "Tools",
+  "Clothing",
+  "Documents",
+  "Warranty",
+  "Frequently Used",
+  "Outdoor",
+  "Kitchen",
+];
 const INITIAL_CATEGORIES = [
   { name: "Electronics", count: 42, color: "bg-blue-50 text-blue-700 border-blue-200" },
   { name: "Tools", count: 18, color: "bg-amber-50 text-amber-700 border-amber-200" },
@@ -800,7 +987,10 @@ function TagsSection() {
 
   return (
     <div className="space-y-5">
-      <SectionHeader title="Tags & Categories" desc="Manage the tags and categories used across your inventory." />
+      <SectionHeader
+        title="Tags & Categories"
+        desc="Manage the tags and categories used across your inventory."
+      />
 
       <Card>
         <CardSection title="Tags">
@@ -829,15 +1019,27 @@ function TagsSection() {
                     onChange={(e) => setTagInput(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") addTag();
-                      if (e.key === "Escape") { setAddingTag(false); setTagInput(""); }
+                      if (e.key === "Escape") {
+                        setAddingTag(false);
+                        setTagInput("");
+                      }
                     }}
                     placeholder="New tag…"
                     className="h-8 w-28 px-2.5 rounded-full border border-accent/50 bg-accent/5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-accent/25"
                   />
-                  <button onClick={addTag} className="h-8 w-8 rounded-full bg-accent text-white text-xs flex items-center justify-center hover:bg-accent/90 transition-colors">
+                  <button
+                    onClick={addTag}
+                    className="h-8 w-8 rounded-full bg-accent text-white text-xs flex items-center justify-center hover:bg-accent/90 transition-colors"
+                  >
                     <Check size={11} />
                   </button>
-                  <button onClick={() => { setAddingTag(false); setTagInput(""); }} className="h-8 w-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors text-sm">
+                  <button
+                    onClick={() => {
+                      setAddingTag(false);
+                      setTagInput("");
+                    }}
+                    className="h-8 w-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors text-sm"
+                  >
                     ×
                   </button>
                 </div>
@@ -846,11 +1048,14 @@ function TagsSection() {
                   onClick={() => setAddingTag(true)}
                   className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:border-accent/40 hover:text-accent hover:bg-accent/5 transition-all"
                 >
-                  <Plus size={11} />Add Tag
+                  <Plus size={11} />
+                  Add Tag
                 </button>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">{tags.length} tags total. Tags are used across all items for quick filtering and search.</p>
+            <p className="text-xs text-muted-foreground">
+              {tags.length} tags total. Tags are used across all items for quick filtering and search.
+            </p>
           </div>
         </CardSection>
 
@@ -878,7 +1083,8 @@ function TagsSection() {
             ))}
             <div className="pt-2">
               <button className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg border border-border bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors">
-                <Plus size={11} />Add Category
+                <Plus size={11} />
+                Add Category
               </button>
             </div>
           </div>
@@ -891,19 +1097,56 @@ function TagsSection() {
 /* ── Section: Integrations ───────────────────────────────────────── */
 
 const INTEGRATIONS = [
-  { name: "Google Drive", desc: "Sync receipts and photos to your Drive", Icon: Archive, connected: true, color: "bg-blue-50 text-blue-600" },
-  { name: "Dropbox", desc: "Automatically back up inventory exports", Icon: Download, connected: false, color: "bg-blue-50 text-blue-600" },
-  { name: "Google Sheets", desc: "Live-sync your inventory to a spreadsheet", Icon: FileText, connected: false, color: "bg-green-50 text-green-600" },
-  { name: "IFTTT", desc: "Build automations triggered by inventory events", Icon: Zap, connected: false, color: "bg-orange-50 text-orange-600" },
-  { name: "HomeKit / Smart Home", desc: "Connect with smart home location tracking", Icon: Wifi, connected: false, color: "bg-purple-50 text-purple-600" },
+  {
+    name: "Google Drive",
+    desc: "Sync receipts and photos to your Drive",
+    Icon: Archive,
+    connected: true,
+    color: "bg-blue-50 text-blue-600",
+  },
+  {
+    name: "Dropbox",
+    desc: "Automatically back up inventory exports",
+    Icon: Download,
+    connected: false,
+    color: "bg-blue-50 text-blue-600",
+  },
+  {
+    name: "Google Sheets",
+    desc: "Live-sync your inventory to a spreadsheet",
+    Icon: FileText,
+    connected: false,
+    color: "bg-green-50 text-green-600",
+  },
+  {
+    name: "IFTTT",
+    desc: "Build automations triggered by inventory events",
+    Icon: Zap,
+    connected: false,
+    color: "bg-orange-50 text-orange-600",
+  },
+  {
+    name: "HomeKit / Smart Home",
+    desc: "Connect with smart home location tracking",
+    Icon: Wifi,
+    connected: false,
+    color: "bg-purple-50 text-purple-600",
+  },
 ];
 
-function IntegrationsSection() {
-  const [connected, setConnected] = useState<Set<string>>(new Set(["Google Drive"]));
-
+function IntegrationsSection({
+  connected,
+  setConnected,
+}: {
+  connected: Set<string>;
+  setConnected: React.Dispatch<React.SetStateAction<Set<string>>>;
+}) {
   return (
     <div className="space-y-5">
-      <SectionHeader title="Integrations" desc="Connect HomeVault to the tools and services you already use." />
+      <SectionHeader
+        title="Integrations"
+        desc="Connect HomeVault to the tools and services you already use."
+      />
 
       <Card>
         <div className="divide-y divide-border/50">
@@ -911,7 +1154,9 @@ function IntegrationsSection() {
             const isConnected = connected.has(intg.name);
             return (
               <div key={intg.name} className="flex items-center gap-4 px-5 py-4">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${intg.color}`}>
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${intg.color}`}
+                >
                   <intg.Icon size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -926,12 +1171,14 @@ function IntegrationsSection() {
                   <p className="text-xs text-muted-foreground mt-0.5">{intg.desc}</p>
                 </div>
                 <button
-                  onClick={() => setConnected((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(intg.name)) next.delete(intg.name);
-                    else next.add(intg.name);
-                    return next;
-                  })}
+                  onClick={() =>
+                    setConnected((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(intg.name)) next.delete(intg.name);
+                      else next.add(intg.name);
+                      return next;
+                    })
+                  }
                   className={[
                     "flex-shrink-0 h-8 px-3.5 rounded-lg text-xs font-semibold transition-colors",
                     isConnected
@@ -952,25 +1199,47 @@ function IntegrationsSection() {
 
 /* ── Section: Advanced ───────────────────────────────────────────── */
 
-function AdvancedSection() {
-  const [autoSave, setAutoSave] = useState(true);
-  const [telemetry, setTelemetry] = useState(false);
-  const [devMode, setDevMode] = useState(false);
+interface AdvancedPreferences {
+  autoSave: boolean;
+  telemetry: boolean;
+  devMode: boolean;
+}
 
+function AdvancedSection({
+  prefs,
+  setPrefs,
+  onResetDefaults,
+}: {
+  prefs: AdvancedPreferences;
+  setPrefs: React.Dispatch<React.SetStateAction<AdvancedPreferences>>;
+  onResetDefaults: () => void;
+}) {
   return (
     <div className="space-y-5">
-      <SectionHeader title="Advanced" desc="Developer options, performance controls, and experimental features." />
+      <SectionHeader
+        title="Advanced"
+        desc="Developer options, performance controls, and experimental features."
+      />
 
       <Card>
         <CardSection title="Behavior">
-          <SettingRow label="Auto-save changes" desc="Automatically save edits without requiring you to click Save">
-            <Toggle on={autoSave} onToggle={() => setAutoSave((v) => !v)} />
+          <SettingRow
+            label="Auto-save changes"
+            desc="Automatically save edits without requiring you to click Save"
+          >
+            <Toggle on={prefs.autoSave} onToggle={() => setPrefs((p) => ({ ...p, autoSave: !p.autoSave }))} />
           </SettingRow>
           <SettingRow label="Usage analytics" desc="Share anonymous usage data to help improve HomeVault">
-            <Toggle on={telemetry} onToggle={() => setTelemetry((v) => !v)} />
+            <Toggle
+              on={prefs.telemetry}
+              onToggle={() => setPrefs((p) => ({ ...p, telemetry: !p.telemetry }))}
+            />
           </SettingRow>
-          <SettingRow label="Developer mode" desc="Show additional debug information and experimental controls">
-            <Toggle on={devMode} onToggle={() => setDevMode((v) => !v)} />
+          <SettingRow
+            label="Developer mode"
+            desc="Show additional debug information and experimental controls"
+          >
+            <Toggle on={prefs.devMode} onToggle={() => setPrefs((p) => ({ ...p, devMode: !p.devMode }))} />
           </SettingRow>
         </CardSection>
 
@@ -980,18 +1249,24 @@ function AdvancedSection() {
           <SettingRow label="App version" desc="You're running the latest version">
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground font-mono">v2.4.1</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Up to date</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Up to date
+              </span>
             </div>
           </SettingRow>
           <SettingRow label="Reset app preferences" desc="Restore all settings to their original defaults">
-            <button className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg border border-border bg-card text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-              <RefreshCw size={11} />Reset to Defaults
+            <button
+              onClick={onResetDefaults}
+              className="flex items-center gap-1.5 h-8 px-3.5 rounded-lg border border-border bg-card text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <RefreshCw size={11} />
+              Reset to Defaults
             </button>
           </SettingRow>
         </CardSection>
       </Card>
 
-      {devMode && (
+      {prefs.devMode && (
         <div className="p-4 rounded-xl bg-foreground/5 border border-border font-mono text-xs text-muted-foreground space-y-1">
           <p className="font-bold text-foreground mb-2">Debug Info</p>
           <p>Build: production · React 18.3.1</p>
@@ -1009,26 +1284,182 @@ function AdvancedSection() {
 export interface SettingsPageProps {
   userEmail: string;
   onSignOut: () => void;
-  onNavigate: (page: PageName) => void;
+  onNavigate: (page: PageName, value?: string) => void;
 }
 
 export default function SettingsPage({ userEmail, onSignOut, onNavigate }: SettingsPageProps) {
   const [activeSection, setActiveSection] = useState<SectionId>("appearance");
+  const [resetVersion, setResetVersion] = useState(0);
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>({
+    lowStock: true,
+    warrantyExpiry: true,
+    missingInfo: true,
+    monthlySummary: true,
+    newFeatures: true,
+    securityAlerts: true,
+  });
+  const [advancedPrefs, setAdvancedPrefs] = useState<AdvancedPreferences>({
+    autoSave: true,
+    telemetry: false,
+    devMode: false,
+  });
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [connectedIntegrations, setConnectedIntegrations] = useState<Set<string>>(new Set());
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
+  const {
+    savedThemeId,
+    useSystemTheme,
+    density,
+    fontSize,
+    accentColor,
+    setThemeById,
+    setUseSystemTheme,
+    setDensity,
+    setFontSize,
+    setAccentColor,
+  } = useTheme();
+  const inventoryPrefs = useInventoryPrefs();
+
+  function applyLoadedSettings(settings: UserSettings) {
+    const ui = settings.uiPreferences ?? {};
+    setThemeById(ui.themeId ?? "light");
+    setUseSystemTheme(ui.useSystemTheme ?? false);
+    setDensity(ui.density ?? "comfortable");
+    setFontSize(ui.fontSize ?? 16);
+    setAccentColor(ui.accentColor ?? null);
+    setReduceMotion(ui.reduceMotion ?? false);
+    setAdvancedPrefs({
+      autoSave: ui.autoSave ?? true,
+      telemetry: ui.telemetry ?? false,
+      devMode: ui.developerMode ?? false,
+    });
+    setConnectedIntegrations(new Set(ui.integrations ?? []));
+    setNotificationPrefs({
+      lowStock: settings.notifyLowStock,
+      warrantyExpiry: settings.notifyWarrantyExpiry,
+      missingInfo: settings.notifyMissingInfo,
+      monthlySummary: settings.notifyMonthlySummary,
+      newFeatures: settings.notifyNewFeatures,
+      securityAlerts: settings.notifySecurityAlerts,
+    });
+    inventoryPrefs.setDefaultView(settings.defaultInventoryView);
+    inventoryPrefs.setDefaultSort(settings.defaultInventorySort);
+    inventoryPrefs.setCurrency(settings.currencyCode);
+    inventoryPrefs.setShowValues(settings.showInventoryValues);
+    inventoryPrefs.setShowLowStock(settings.showLowStockBadges);
+    inventoryPrefs.setShowMissingInfo(settings.showMissingInfoBadges);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    setSettingsLoading(true);
+    getSettings()
+      .then((settings) => {
+        if (!cancelled) applyLoadedSettings(settings);
+      })
+      .catch((error) => {
+        if (!cancelled)
+          setSettingsMessage(error instanceof Error ? error.message : "Could not load settings.");
+      })
+      .finally(() => {
+        if (!cancelled) setSettingsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function currentSettingsPayload(): UserSettings {
+    return {
+      notifyLowStock: notificationPrefs.lowStock,
+      notifyWarrantyExpiry: notificationPrefs.warrantyExpiry,
+      notifyMissingInfo: notificationPrefs.missingInfo,
+      notifyMonthlySummary: notificationPrefs.monthlySummary,
+      notifyNewFeatures: notificationPrefs.newFeatures,
+      notifySecurityAlerts: notificationPrefs.securityAlerts,
+      defaultInventoryView: inventoryPrefs.defaultView,
+      defaultInventorySort: inventoryPrefs.defaultSort,
+      currencyCode: inventoryPrefs.currency,
+      showInventoryValues: inventoryPrefs.showValues,
+      showLowStockBadges: inventoryPrefs.showLowStock,
+      showMissingInfoBadges: inventoryPrefs.showMissingInfo,
+      uiPreferences: {
+        themeId: savedThemeId,
+        useSystemTheme,
+        density,
+        fontSize,
+        accentColor,
+        reduceMotion,
+        autoSave: advancedPrefs.autoSave,
+        telemetry: advancedPrefs.telemetry,
+        developerMode: advancedPrefs.devMode,
+        integrations: Array.from(connectedIntegrations),
+      },
+    };
+  }
+
+  async function saveAllSettings() {
+    setSettingsSaving(true);
+    setSettingsMessage(null);
+    try {
+      const saved = await updateSettings(currentSettingsPayload());
+      applyLoadedSettings(saved);
+      setSettingsMessage("All settings saved.");
+    } catch (error) {
+      setSettingsMessage(error instanceof Error ? error.message : "Could not save settings.");
+    } finally {
+      setSettingsSaving(false);
+    }
+  }
+
+  async function resetAllPreferences() {
+    setSettingsSaving(true);
+    setSettingsMessage(null);
+    try {
+      const defaults = await resetSettings();
+      applyLoadedSettings(defaults);
+      setResetVersion((version) => version + 1);
+      setSettingsMessage("Settings reset to defaults.");
+    } catch (error) {
+      setSettingsMessage(error instanceof Error ? error.message : "Could not reset settings.");
+    } finally {
+      setSettingsSaving(false);
+    }
+  }
 
   const sectionContent: Record<SectionId, React.ReactNode> = {
-    appearance: <AppearanceSection />,
-    account: <AccountSection accountEmail={userEmail} onSignOut={onSignOut} />,
-    inventory: <InventorySection />,
-    notifications: <NotificationsSection />,
-    privacy: <PrivacySection />,
-    tags: <TagsSection />,
-    integrations: <IntegrationsSection />,
-    advanced: <AdvancedSection />,
+    appearance: (
+      <AppearanceSection key={resetVersion} reduceMotion={reduceMotion} setReduceMotion={setReduceMotion} />
+    ),
+    account: <AccountSection key={resetVersion} accountEmail={userEmail} onSignOut={onSignOut} />,
+    inventory: <InventorySection key={resetVersion} />,
+    notifications: (
+      <NotificationsSection key={resetVersion} prefs={notificationPrefs} setPrefs={setNotificationPrefs} />
+    ),
+    privacy: <PrivacySection key={resetVersion} />,
+    tags: <TagsSection key={resetVersion} />,
+    integrations: (
+      <IntegrationsSection
+        key={resetVersion}
+        connected={connectedIntegrations}
+        setConnected={setConnectedIntegrations}
+      />
+    ),
+    advanced: (
+      <AdvancedSection
+        key={resetVersion}
+        prefs={advancedPrefs}
+        setPrefs={setAdvancedPrefs}
+        onResetDefaults={resetAllPreferences}
+      />
+    ),
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground" style={{ fontFamily: "'Figtree', sans-serif" }}>
-      <TopNav onSignOut={onSignOut} />
+    <div className="min-h-screen bg-background text-foreground">
+      <TopNav onSignOut={onSignOut} onNavigate={onNavigate} />
 
       <main className="max-w-[1440px] mx-auto px-8 py-7">
         <NavStrip
@@ -1042,29 +1473,49 @@ export default function SettingsPage({ userEmail, onSignOut, onNavigate }: Setti
         {/* Page header */}
         <div className="mt-6 mb-7">
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <button onClick={() => onNavigate("dashboard")} className="hover:text-foreground transition-colors">Dashboard</button>
+            <button
+              onClick={() => onNavigate("dashboard")}
+              className="hover:text-foreground transition-colors"
+            >
+              Dashboard
+            </button>
             <ChevronRight size={13} />
             <span className="text-foreground font-medium">Settings</span>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Settings size={18} className="text-accent" />
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                <Settings size={18} className="text-accent" />
+              </div>
+              <div>
+                <h1
+                  className="font-display text-[26px] text-foreground leading-tight"
+                  style={{ letterSpacing: "-0.03em" }}
+                >
+                  Settings
+                </h1>
+                <p className="text-sm text-muted-foreground">Customize how HomeVault works for you.</p>
+              </div>
             </div>
-            <div>
-              <h1
-                className="text-[26px] font-bold text-foreground leading-tight"
-                style={{ letterSpacing: "-0.03em", fontFamily: "'Instrument Serif', serif" }}
+            <div className="flex items-center gap-3">
+              {settingsMessage && (
+                <p className="max-w-[260px] text-xs text-muted-foreground" role="status">
+                  {settingsMessage}
+                </p>
+              )}
+              <button
+                onClick={saveAllSettings}
+                disabled={settingsLoading || settingsSaving}
+                className="h-10 px-5 rounded-xl bg-accent text-accent-foreground text-sm font-semibold shadow-sm transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Settings
-              </h1>
-              <p className="text-sm text-muted-foreground">Customize how HomeVault works for you.</p>
+                {settingsSaving ? "Saving…" : settingsLoading ? "Loading…" : "Apply settings"}
+              </button>
             </div>
           </div>
         </div>
 
         {/* Two-column layout */}
-        <div className="flex gap-7 items-start">
-
+        <div className="settings-layout flex gap-7 items-start">
           {/* ── Left sidebar ────────────────────────────────────── */}
           <div className="w-[220px] flex-shrink-0">
             <nav className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
@@ -1083,10 +1534,20 @@ export default function SettingsPage({ userEmail, onSignOut, onNavigate }: Setti
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                     ].join(" ")}
                   >
-                    <div className={["w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors", isActive ? "bg-accent/15" : "bg-muted"].join(" ")}>
+                    <div
+                      className={[
+                        "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+                        isActive ? "bg-accent/15" : "bg-muted",
+                      ].join(" ")}
+                    >
                       <section.Icon size={13} className={isActive ? "text-accent" : ""} />
                     </div>
-                    <span className={["text-sm font-semibold flex-1 text-left", isActive ? "text-foreground" : ""].join(" ")}>
+                    <span
+                      className={[
+                        "text-sm font-semibold flex-1 text-left",
+                        isActive ? "text-foreground" : "",
+                      ].join(" ")}
+                    >
                       {section.label}
                     </span>
                     {section.badge && (
@@ -1107,20 +1568,65 @@ export default function SettingsPage({ userEmail, onSignOut, onNavigate }: Setti
                 <span className="text-[11px] font-bold text-muted-foreground">HomeVault</span>
               </div>
               <p className="text-[11px] text-muted-foreground/70">Version 2.4.1 · Free plan</p>
-              <button className="mt-2 text-[11px] font-semibold text-accent hover:underline">Upgrade to Pro →</button>
+              <button className="mt-2 text-[11px] font-semibold text-accent hover:underline">
+                Upgrade to Pro →
+              </button>
             </div>
           </div>
 
           {/* ── Right panel ─────────────────────────────────────── */}
-          <div className="flex-1 min-w-0 pb-12">
-            {sectionContent[activeSection]}
-          </div>
+          <div className="flex-1 min-w-0 pb-12">{sectionContent[activeSection]}</div>
         </div>
       </main>
 
       <style>{`
         .scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .settings-font-slider {
+          width: 100%;
+          height: 24px;
+          margin: 0;
+          appearance: none;
+          background: transparent;
+          cursor: pointer;
+        }
+        .settings-font-slider::-webkit-slider-runnable-track {
+          height: 10px;
+          border-radius: 9999px;
+          background: var(--muted);
+          border: 2px solid var(--border);
+        }
+        .settings-font-slider::-webkit-slider-thumb {
+          width: 18px;
+          height: 18px;
+          margin-top: -6px;
+          appearance: none;
+          border-radius: 9999px;
+          border: 1px solid #d1d5db;
+          background: #ffffff;
+          box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+          transition: transform 150ms ease, box-shadow 150ms ease;
+        }
+        .settings-font-slider::-moz-range-track {
+          height: 8px;
+          border-radius: 9999px;
+          background: var(--muted);
+          border: 2px solid var(--border);
+        }
+        .settings-font-slider::-moz-range-thumb {
+          width: 16px;
+          height: 16px;
+          border-radius: 9999px;
+          border: 1px solid #d1d5db;
+          background: #ffffff;
+          box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+        }
+        .settings-font-slider:hover::-webkit-slider-thumb,
+        .settings-font-slider:focus-visible::-webkit-slider-thumb {
+          transform: scale(1.08);
+          box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+        }
+        .settings-font-slider:focus-visible { outline: none; }
       `}</style>
     </div>
   );

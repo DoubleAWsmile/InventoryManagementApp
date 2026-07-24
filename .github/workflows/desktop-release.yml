@@ -1,0 +1,110 @@
+name: Desktop release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing version tag to build, such as v1.0.0"
+        required: true
+        type: string
+      publish:
+        description: "Create or update the GitHub Release"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    name: Windows x86_64
+    runs-on: windows-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Validate release tag and configured versions
+        working-directory: frontend
+        run: npm run release:validate -- --tag "$env:RELEASE_TAG"
+
+      - name: Test Go backend
+        working-directory: backend
+        run: go test ./...
+
+      - name: Test frontend
+        working-directory: frontend
+        run: npm test
+
+      - name: Build hosted frontend
+        working-directory: frontend
+        run: npm run build:web
+
+      - name: Build desktop application and installers
+        working-directory: frontend
+        run: npm run build:desktop
+
+      - name: Check Rust application
+        working-directory: frontend
+        run: cargo check --manifest-path src-tauri/Cargo.toml
+
+      - name: Prepare release artifacts
+        working-directory: frontend
+        run: npm run release:prepare -- --tag "$env:RELEASE_TAG" --output release-artifacts
+
+      - name: Classify release
+        id: release
+        shell: pwsh
+        run: |
+          $version = $env:RELEASE_TAG.Substring(1)
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "prerelease=$($version.Contains('-').ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release and upload installers
+        if: github.event_name == 'push' || inputs.publish
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: Inventory Management ${{ env.RELEASE_TAG }}
+          generate_release_notes: true
+          prerelease: ${{ steps.release.outputs.prerelease }}
+          fail_on_unmatched_files: true
+          files: |
+            frontend/release-artifacts/InventoryManagementApp-${{ steps.release.outputs.version }}-windows-x86_64-setup.exe
+            frontend/release-artifacts/InventoryManagementApp-${{ steps.release.outputs.version }}-windows-x86_64.msi
+            frontend/release-artifacts/InventoryManagementApp-Windows-Setup.exe

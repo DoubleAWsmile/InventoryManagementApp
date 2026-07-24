@@ -65,16 +65,19 @@ export function InventoryPrefsProvider({ children }: { children: React.ReactNode
     });
   }, []);
 
-  const value = useMemo<InventoryPrefsContextValue>(() => ({
-    ...prefs,
-    currencySymbol: CURRENCY_SYMBOLS[prefs.currency],
-    setDefaultView: (v) => update({ defaultView: v }),
-    setDefaultSort: (s) => update({ defaultSort: s }),
-    setCurrency: (c) => update({ currency: c }),
-    setShowValues: (v) => update({ showValues: v }),
-    setShowLowStock: (v) => update({ showLowStock: v }),
-    setShowMissingInfo: (v) => update({ showMissingInfo: v }),
-  }), [prefs, update]);
+  const value = useMemo<InventoryPrefsContextValue>(
+    () => ({
+      ...prefs,
+      currencySymbol: CURRENCY_SYMBOLS[prefs.currency],
+      setDefaultView: (v) => update({ defaultView: v }),
+      setDefaultSort: (s) => update({ defaultSort: s }),
+      setCurrency: (c) => update({ currency: c }),
+      setShowValues: (v) => update({ showValues: v }),
+      setShowLowStock: (v) => update({ showLowStock: v }),
+      setShowMissingInfo: (v) => update({ showMissingInfo: v }),
+    }),
+    [prefs, update],
+  );
 
   return <CTX.Provider value={value}>{children}</CTX.Provider>;
 }

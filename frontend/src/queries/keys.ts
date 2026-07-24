@@ -5,6 +5,7 @@ export const queryKeys = {
   categories: ["categories"] as const,
   rooms: ["rooms"] as const,
   items: ["items"] as const,
-  wishlist: (pageSize: number) => ["wishlist", { pageSize }] as const,
+  wishlist: ["wishlist"] as const,
+  reports: ["reports"] as const,
   activities: (pageSize: number) => ["activities", { pageSize }] as const,
 };

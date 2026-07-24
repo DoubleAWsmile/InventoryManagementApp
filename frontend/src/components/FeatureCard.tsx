@@ -25,8 +25,8 @@ export default function FeatureCard({
         isHighlight
           ? "bg-accent text-accent-foreground border-accent hover:bg-accent/90 shadow-sm"
           : isActive
-          ? "bg-card border-accent/40 text-foreground shadow-sm ring-1 ring-accent/20"
-          : "bg-card border-border text-muted-foreground hover:text-foreground hover:shadow-sm",
+            ? "bg-card border-accent/40 text-foreground shadow-sm ring-1 ring-accent/20"
+            : "bg-card border-border text-muted-foreground hover:text-foreground hover:shadow-sm",
       ].join(" ")}
     >
       <div
@@ -35,10 +35,7 @@ export default function FeatureCard({
           isHighlight ? "bg-white/20" : isActive ? "bg-accent/10" : "bg-muted",
         ].join(" ")}
       >
-        <Icon
-          size={14}
-          className={isHighlight ? "text-white" : isActive ? "text-accent" : ""}
-        />
+        <Icon size={14} className={isHighlight ? "text-white" : isActive ? "text-accent" : ""} />
       </div>
       <div>
         <div

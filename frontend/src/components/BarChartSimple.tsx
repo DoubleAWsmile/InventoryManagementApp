@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../theme/ThemeContext";
 
 interface BarDatum {
@@ -23,12 +23,26 @@ export default function BarChartSimple({
 }: BarChartSimpleProps) {
   const { tokens } = useTheme();
   const [hovered, setHovered] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(560);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateWidth = () => setWidth(Math.max(240, Math.round(container.getBoundingClientRect().width)));
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   const color = barColor ?? tokens.chartBar;
   const max = Math.max(...data.map((d) => d.value), 1);
 
-  const paddingLeft = 36;
-  const paddingBottom = 24;
+  const fmt = formatValue ?? ((v: number) => String(v));
+  const paddingLeft = Math.max(36, fmt(max).length * 6 + 12);
+  const paddingBottom = 30;
   const paddingTop = 8;
   const paddingRight = 8;
   const chartH = height - paddingBottom - paddingTop;
@@ -37,16 +51,21 @@ export default function BarChartSimple({
   const yStep = Math.ceil(max / yTicks);
   const yMax = yStep * yTicks;
 
-  const fmt = formatValue ?? ((v: number) => String(v));
+  const plotWidth = width - paddingLeft - paddingRight;
+  const slotW = plotWidth / Math.max(data.length, 1);
+  const maxLabelCharacters = Math.max(4, Math.min(16, Math.floor(slotW / 6)));
+  const displayLabel = (label: string) =>
+    label.length > maxLabelCharacters ? `${label.slice(0, Math.max(1, maxLabelCharacters - 1))}…` : label;
 
   return (
-    <div style={{ position: "relative", width: "100%", height }}>
+    <div ref={containerRef} style={{ position: "relative", width: "100%", height, minWidth: 0 }}>
       <svg
         width="100%"
         height={height}
-        viewBox={`0 0 560 ${height}`}
-        preserveAspectRatio="none"
-        style={{ display: "block", overflow: "visible" }}
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label="Bar chart"
+        style={{ display: "block", overflow: "hidden" }}
       >
         {/* Y grid lines + labels */}
         {Array.from({ length: yTicks + 1 }, (_, i) => {
@@ -56,7 +75,7 @@ export default function BarChartSimple({
             <g key={`ytick-${i}`}>
               <line
                 x1={paddingLeft}
-                x2={560 - paddingRight}
+                x2={width - paddingRight}
                 y1={y}
                 y2={y}
                 stroke={tokens.border}
@@ -69,7 +88,6 @@ export default function BarChartSimple({
                 textAnchor="end"
                 fontSize={10}
                 fill={tokens.mutedForeground}
-                style={{ fontFamily: "'Figtree', sans-serif" }}
               >
                 {fmt(val)}
               </text>
@@ -79,7 +97,6 @@ export default function BarChartSimple({
 
         {/* Bars */}
         {data.map((d, i) => {
-          const slotW = (560 - paddingLeft - paddingRight) / data.length;
           const barW = Math.max(Math.min(slotW * 0.55, 40), 10);
           const x = paddingLeft + i * slotW + slotW / 2 - barW / 2;
           const barH = (d.value / yMax) * chartH;
@@ -93,6 +110,7 @@ export default function BarChartSimple({
               onMouseLeave={() => setHovered(null)}
               style={{ cursor: "default" }}
             >
+              <title>{`${d.label}: ${fmt(d.value)}${unit}`}</title>
               <rect
                 x={x}
                 y={y}
@@ -105,13 +123,12 @@ export default function BarChartSimple({
               {/* X label */}
               <text
                 x={x + barW / 2}
-                y={height - 6}
+                y={height - 8}
                 textAnchor="middle"
                 fontSize={10}
                 fill={tokens.mutedForeground}
-                style={{ fontFamily: "'Figtree', sans-serif" }}
               >
-                {d.label}
+                {displayLabel(d.label)}
               </text>
               {/* Hover value */}
               {isHov && (
@@ -122,9 +139,9 @@ export default function BarChartSimple({
                   fontSize={10}
                   fontWeight={700}
                   fill={tokens.foreground}
-                  style={{ fontFamily: "'Figtree', sans-serif" }}
                 >
-                  {fmt(d.value)}{unit}
+                  {fmt(d.value)}
+                  {unit}
                 </text>
               )}
             </g>

@@ -39,9 +39,7 @@ export function CompactItemCard({
         <Icon size={18} className={iconColor} />
       </div>
 
-      <h3 className="text-sm font-semibold text-foreground leading-tight line-clamp-2 mb-2">
-        {name}
-      </h3>
+      <h3 className="text-sm font-semibold text-foreground leading-tight line-clamp-2 mb-2">{name}</h3>
 
       <div className="space-y-1 mb-3">
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -95,8 +93,7 @@ export function FullItemCard({
   iconColor,
   onClick,
 }: FullItemCardProps) {
-  const catColor =
-    CATEGORY_COLORS[category] ?? "bg-slate-50 text-slate-700 border-slate-200";
+  const catColor = CATEGORY_COLORS[category] ?? "bg-slate-50 text-slate-700 border-slate-200";
   const shortDate = (d?: string) => d?.replace(", 2024", "").replace(", 2023", "") ?? "";
 
   return (
@@ -112,9 +109,7 @@ export function FullItemCard({
           </span>
         )}
         {missingInfo && (
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 text-red-600">
-            INFO
-          </span>
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 text-red-600">INFO</span>
         )}
       </div>
 
@@ -124,9 +119,7 @@ export function FullItemCard({
       </div>
 
       {/* Name */}
-      <h3 className="text-sm font-semibold text-foreground leading-snug mb-1 pr-8 line-clamp-2">
-        {name}
-      </h3>
+      <h3 className="text-sm font-semibold text-foreground leading-snug mb-1 pr-8 line-clamp-2">{name}</h3>
 
       {/* Category badge */}
       <div className="mb-3">
@@ -148,7 +141,10 @@ export function FullItemCard({
         {value !== undefined && (
           <div>
             <p className="text-[10px] text-muted-foreground/70 font-medium uppercase tracking-wider">Value</p>
-            <p className="text-[11px] text-foreground font-semibold">{currencySymbol}{value}</p>
+            <p className="text-[11px] text-foreground font-semibold">
+              {currencySymbol}
+              {value}
+            </p>
           </div>
         )}
         {addedDate && (

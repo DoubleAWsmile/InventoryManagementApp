@@ -2,20 +2,22 @@ import { Settings, Layers, Package, Map, Home, Tag, Plus, Heart, BarChart2 } fro
 import SearchBar from "./SearchBar";
 import NotificationsButton from "./NotificationsButton";
 import type { NavItem } from "../types";
+import DesktopDownloadLink from "./DesktopDownloadLink";
 
 /* ── Logo ────────────────────────────────────────────────────────── */
 
 export function Logo() {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)" }}>
+      <div
+        className="w-8 h-8 rounded-lg flex items-center justify-center"
+        style={{ background: "rgba(255,255,255,0.08)" }}
+      >
         <Layers size={16} className="text-white" />
       </div>
-      <span
-        className="text-[17px] font-bold"
-        style={{ letterSpacing: "-0.02em", fontFamily: "'Figtree', sans-serif" }}
-      >
-        <span className="text-white">Home</span><span style={{ color: "#7B9FFF" }}>Vault</span>
+      <span className="text-[17px] font-bold" style={{ letterSpacing: "-0.02em" }}>
+        <span className="text-white">Home</span>
+        <span style={{ color: "#7B9FFF" }}>Vault</span>
       </span>
     </div>
   );
@@ -39,26 +41,33 @@ export function TopNav({ onSignOut, onSettings, onNavigate }: TopNavProps) {
       className="sticky top-0 z-50"
       style={{ background: "#131318", borderBottom: "1px solid rgba(255,255,255,0.07)" }}
     >
-      <div className="max-w-[1440px] mx-auto px-8 h-14 flex items-center gap-6">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 xl:px-8 h-14 flex items-center gap-3 lg:gap-6">
         {/* Logo */}
-        <div className="min-w-[180px]">
+        <div className="min-w-0 sm:min-w-[180px]">
           <Logo />
         </div>
 
         {/* Search */}
-        <div className="flex-1 max-w-2xl mx-auto">
+        <div className="hidden md:block flex-1 max-w-2xl mx-auto">
           <SearchBar onNavigate={onNavigate} />
         </div>
 
         {/* Right actions */}
         <div className="flex items-center gap-0.5 ml-auto">
+          <DesktopDownloadLink />
           <NotificationsButton onNavigate={onNavigate} />
           <button
             onClick={onSettings}
             className="w-9 h-9 flex items-center justify-center rounded-lg transition-colors"
             style={{ color: "rgba(255,255,255,0.55)" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "rgba(255,255,255,0.9)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,0.55)"; }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+              e.currentTarget.style.color = "rgba(255,255,255,0.9)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "rgba(255,255,255,0.55)";
+            }}
           >
             <Settings size={18} />
           </button>
@@ -102,8 +111,8 @@ export function NavStrip({ active, onSelect }: NavStripProps) {
               isHL
                 ? "bg-accent text-accent-foreground border-accent hover:bg-accent/90 shadow-sm"
                 : isActive
-                ? "bg-card border-accent/40 text-foreground shadow-sm ring-1 ring-accent/20"
-                : "bg-card border-border text-muted-foreground hover:text-foreground hover:shadow-sm",
+                  ? "bg-card border-accent/40 text-foreground shadow-sm ring-1 ring-accent/20"
+                  : "bg-card border-border text-muted-foreground hover:text-foreground hover:shadow-sm",
             ].join(" ")}
           >
             <div
@@ -112,10 +121,7 @@ export function NavStrip({ active, onSelect }: NavStripProps) {
                 isHL ? "bg-white/20" : isActive ? "bg-accent/10" : "bg-muted",
               ].join(" ")}
             >
-              <item.Icon
-                size={14}
-                className={isHL ? "text-white" : isActive ? "text-accent" : ""}
-              />
+              <item.Icon size={14} className={isHL ? "text-white" : isActive ? "text-accent" : ""} />
             </div>
             <div>
               <div

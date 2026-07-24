@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Inventory Management",
+  "version": "0.1.0",
+  "identifier": "com.inventorymanagement.desktop",
+  "build": {
+    "beforeDevCommand": "npm run vite:desktop",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run vite:build:desktop",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' asset: http://asset.localhost; connect-src 'self' http://127.0.0.1:*"
+    },
+    "windows": [
+      {
+        "title": "Inventory Management",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": ["icons/icon.ico", "icons/icon.png", "icons/icon.icns"],
+    "externalBin": ["binaries/desktop-api"]
+  }
+}

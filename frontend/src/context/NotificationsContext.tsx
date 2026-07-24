@@ -18,7 +18,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   function markRead(id: string) {
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, unread: false } : n));
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)));
   }
 
   function markAllRead() {

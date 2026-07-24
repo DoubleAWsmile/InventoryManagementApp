@@ -3,3 +3,7 @@
 /frontend/dist
 backend/.env
 frontend/.env
+/frontend/src-tauri/target
+/frontend/src-tauri/target-font-validation
+/frontend/src-tauri/binaries/desktop-api-*
+/frontend/release-artifacts

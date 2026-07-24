@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/DoubleAWsmile/InventoryManagementApp/internal/db"
+	postgresrepository "github.com/DoubleAWsmile/InventoryManagementApp/internal/repository/postgres"
 	"github.com/joho/godotenv"
 )
 
@@ -27,13 +28,10 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	result, err := pool.Exec(ctx, `
-		DELETE FROM sessions
-		WHERE expires_at <= NOW()
-	`)
+	deleted, err := postgresrepository.New(pool).Repositories().Sessions.DeleteExpired(ctx, time.Now())
 	if err != nil {
 		log.Fatal("failed to delete expired sessions:", err)
 	}
 
-	log.Println("deleted expired sessions:", result.RowsAffected())
+	log.Println("deleted expired sessions:", deleted)
 }

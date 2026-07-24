@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { THEMES, DEFAULT_THEME_ID } from "./themes";
 import type { AppTheme, ThemeTokens } from "./themes";
 
@@ -18,7 +11,17 @@ const KEY_FONT_SIZE = "homevault-font-size";
 const KEY_ACCENT = "homevault-accent";
 
 export type Density = "compact" | "comfortable" | "spacious";
-export type FontSizeOption = "small" | "default" | "large";
+export type FontSizeOption = number;
+
+function getSavedFontSize(): FontSizeOption {
+  const saved = localStorage.getItem(KEY_FONT_SIZE);
+  const legacySizes: Record<string, number> = { small: 13, default: 16, large: 19 };
+  if (!saved) return 16;
+  if (saved in legacySizes) return legacySizes[saved];
+
+  const parsed = Number(saved);
+  return Number.isFinite(parsed) ? Math.min(21, Math.max(13, parsed)) : 16;
+}
 
 /* ── CSS variable injection ─────────────────────────────────────── */
 
@@ -47,8 +50,7 @@ function applyTokens(tokens: ThemeTokens) {
 /* ── System preference helper ───────────────────────────────────── */
 
 function getSystemThemeId(): string {
-  return typeof window !== "undefined" &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
+  return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light";
 }
@@ -103,20 +105,18 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [savedThemeId, setSavedThemeId] = useState<string>(
-    () => localStorage.getItem(KEY_THEME) ?? DEFAULT_THEME_ID
+    () => localStorage.getItem(KEY_THEME) ?? DEFAULT_THEME_ID,
   );
   const [useSystemTheme, setUseSystemThemeState] = useState<boolean>(
-    () => localStorage.getItem(KEY_SYSTEM) === "true"
+    () => localStorage.getItem(KEY_SYSTEM) === "true",
   );
   const [density, setDensityState] = useState<Density>(
-    () => (localStorage.getItem(KEY_DENSITY) as Density) ?? "comfortable"
+    () => (localStorage.getItem(KEY_DENSITY) as Density) ?? "comfortable",
   );
   const [fontSize, setFontSizeState] = useState<FontSizeOption>(
-    () => (localStorage.getItem(KEY_FONT_SIZE) as FontSizeOption) ?? "default"
+    getSavedFontSize,
   );
-  const [accentColor, setAccentColorState] = useState<string | null>(
-    () => localStorage.getItem(KEY_ACCENT)
-  );
+  const [accentColor, setAccentColorState] = useState<string | null>(() => localStorage.getItem(KEY_ACCENT));
 
   const effectiveThemeId = useSystemTheme ? getSystemThemeId() : savedThemeId;
   const theme = useMemo(() => findTheme(effectiveThemeId), [effectiveThemeId]);
@@ -155,8 +155,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   /* Apply font size to html element */
   useEffect(() => {
-    const sizes: Record<FontSizeOption, string> = { small: "13px", default: "", large: "19px" };
-    document.documentElement.style.fontSize = sizes[fontSize];
+    document.documentElement.style.fontSize = `${fontSize}px`;
   }, [fontSize]);
 
   const setThemeById = useCallback((id: string) => {
@@ -205,13 +204,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       accentColor,
       setAccentColor,
     }),
-    [effectiveThemeId, savedThemeId, theme, setThemeById, useSystemTheme, setUseSystemTheme,
-     density, setDensity, fontSize, setFontSize, accentColor, setAccentColor]
+    [
+      effectiveThemeId,
+      savedThemeId,
+      theme,
+      setThemeById,
+      useSystemTheme,
+      setUseSystemTheme,
+      density,
+      setDensity,
+      fontSize,
+      setFontSize,
+      accentColor,
+      setAccentColor,
+    ],
   );
 
-  return (
-    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 /* ── Hook ───────────────────────────────────────────────────────── */

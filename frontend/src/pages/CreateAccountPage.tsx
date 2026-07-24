@@ -50,7 +50,11 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
       await createUser(email.trim(), fullName.trim(), password.trim());
       onFinished();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "We couldn't create your account yet. Please try again.");
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "We couldn't create your account yet. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -63,7 +67,7 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
   ];
 
   return (
-    <div className="min-h-screen flex bg-background" style={{ fontFamily: "'Figtree', sans-serif" }}>
+    <div className="min-h-screen flex bg-background">
       <div
         className="hidden lg:flex flex-col w-[520px] xl:w-[580px] flex-shrink-0 relative overflow-hidden"
         style={{ background: "linear-gradient(160deg, #1C3557 0%, #0F2240 100%)" }}
@@ -90,7 +94,7 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
                 r="1.5"
                 fill="rgba(255,255,255,0.06)"
               />
-            ))
+            )),
           )}
         </svg>
 
@@ -99,7 +103,10 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
             <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/10 border border-white/10">
               <Layers size={17} className="text-white" />
             </div>
-            <span className="text-xl font-bold text-white tracking-tight" style={{ letterSpacing: "-0.02em" }}>
+            <span
+              className="text-xl font-bold text-white tracking-tight"
+              style={{ letterSpacing: "-0.02em" }}
+            >
               Home<span style={{ color: "#7B9EFF" }}>Vault</span>
             </span>
           </div>
@@ -112,8 +119,8 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
               </span>
             </div>
             <h2
-              className="text-[40px] xl:text-[46px] font-bold text-white leading-[1.1] mb-5"
-              style={{ letterSpacing: "-0.04em", fontFamily: "'Instrument Serif', serif" }}
+              className="font-display text-[40px] xl:text-[46px] text-white leading-[1.1] mb-5"
+              style={{ letterSpacing: "-0.04em" }}
             >
               Build a clearer view
               <br />
@@ -170,14 +177,12 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
               <UserPlus size={20} />
             </div>
             <h1
-              className="text-[30px] font-bold text-foreground leading-tight mb-1.5"
-              style={{ letterSpacing: "-0.035em", fontFamily: "'Instrument Serif', serif" }}
+              className="font-display text-[30px] text-foreground leading-tight mb-1.5"
+              style={{ letterSpacing: "-0.035em" }}
             >
               Create account
             </h1>
-            <p className="text-sm text-muted-foreground">
-              Set up your HomeVault account.
-            </p>
+            <p className="text-sm text-muted-foreground">Set up your HomeVault account.</p>
           </div>
 
           {error && (
@@ -196,9 +201,7 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
 
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">
-                Full name
-              </label>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Full name</label>
               <input
                 type="text"
                 value={fullName}
@@ -207,15 +210,15 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
                 autoComplete="name"
                 className={[
                   "w-full h-11 px-4 rounded-xl border text-sm text-foreground bg-card placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all",
-                  error && !fullName.trim() ? "border-red-300 bg-red-50/30" : "border-border focus:border-accent/50",
+                  error && !fullName.trim()
+                    ? "border-red-300 bg-red-50/30"
+                    : "border-border focus:border-accent/50",
                 ].join(" ")}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">
-                Email address
-              </label>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Email address</label>
               <input
                 type="email"
                 value={email}
@@ -224,15 +227,15 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
                 autoComplete="email"
                 className={[
                   "w-full h-11 px-4 rounded-xl border text-sm text-foreground bg-card placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all",
-                  error && !email.trim() ? "border-red-300 bg-red-50/30" : "border-border focus:border-accent/50",
+                  error && !email.trim()
+                    ? "border-red-300 bg-red-50/30"
+                    : "border-border focus:border-accent/50",
                 ].join(" ")}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">
-                Password
-              </label>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Password</label>
               <div className="relative">
                 <input
                   type={showPw ? "text" : "password"}
@@ -242,7 +245,9 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
                   autoComplete="new-password"
                   className={[
                     "w-full h-11 px-4 pr-11 rounded-xl border text-sm text-foreground bg-card placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all",
-                    error && !password.trim() ? "border-red-300 bg-red-50/30" : "border-border focus:border-accent/50",
+                    error && !password.trim()
+                      ? "border-red-300 bg-red-50/30"
+                      : "border-border focus:border-accent/50",
                   ].join(" ")}
                 />
                 <button
@@ -257,9 +262,7 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">
-                Confirm password
-              </label>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">Confirm password</label>
               <input
                 type={showPw ? "text" : "password"}
                 value={confirmPassword}
@@ -268,7 +271,9 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
                 autoComplete="new-password"
                 className={[
                   "w-full h-11 px-4 rounded-xl border text-sm text-foreground bg-card placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all",
-                  error && !confirmPassword.trim() ? "border-red-300 bg-red-50/30" : "border-border focus:border-accent/50",
+                  error && !confirmPassword.trim()
+                    ? "border-red-300 bg-red-50/30"
+                    : "border-border focus:border-accent/50",
                 ].join(" ")}
               />
             </div>
@@ -287,7 +292,13 @@ export default function CreateAccountPage({ onFinished, onBackToSignIn }: Create
               >
                 {wantsUpdates && (
                   <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                    <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M1 4L3.5 6.5L9 1"
+                      stroke="white"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 )}
               </button>

@@ -15,7 +15,10 @@ export default function SearchBar({ onNavigate }: SearchBarProps) {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") { setOpen(false); inputRef.current?.blur(); }
+      if (e.key === "Escape") {
+        setOpen(false);
+        inputRef.current?.blur();
+      }
     }
     function onPointerDown(e: PointerEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -30,7 +33,9 @@ export default function SearchBar({ onNavigate }: SearchBarProps) {
     };
   }, []);
 
-  function handleFocus() { setOpen(true); }
+  function handleFocus() {
+    setOpen(true);
+  }
 
   function handleClear() {
     setQuery("");
@@ -58,7 +63,6 @@ export default function SearchBar({ onNavigate }: SearchBarProps) {
             background: open ? "rgba(255,255,255,0.11)" : "rgba(255,255,255,0.06)",
             border: open ? "1px solid rgba(123,159,255,0.45)" : "1px solid rgba(255,255,255,0.1)",
             color: "rgba(255,255,255,0.88)",
-            fontFamily: "'Figtree', sans-serif",
           }}
         />
         {query && (
@@ -77,12 +81,16 @@ export default function SearchBar({ onNavigate }: SearchBarProps) {
         <SearchPanel
           query={query}
           onQueryChange={setQuery}
-          onClose={() => { setOpen(false); inputRef.current?.blur(); }}
+          onClose={() => {
+            setOpen(false);
+            inputRef.current?.blur();
+          }}
           onViewAll={(q) => {
             setOpen(false);
             inputRef.current?.blur();
             onNavigate?.("searchResults", q);
           }}
+          onNavigate={onNavigate}
         />
       )}
     </div>

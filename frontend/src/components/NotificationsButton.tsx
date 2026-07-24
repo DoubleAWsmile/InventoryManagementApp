@@ -16,7 +16,9 @@ export default function NotificationsButton({ onNavigate }: NotificationsButtonP
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") setOpen(false); }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
     function onPointerDown(e: PointerEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
     }
@@ -29,7 +31,6 @@ export default function NotificationsButton({ onNavigate }: NotificationsButtonP
       document.removeEventListener("pointerdown", onPointerDown);
     };
   }, [open]);
-
 
   const TAB_LABELS: { id: NotifTab; label: string }[] = [
     { id: "all", label: "All" },
@@ -50,7 +51,10 @@ export default function NotificationsButton({ onNavigate }: NotificationsButtonP
         onClick={() => setOpen((o) => !o)}
         className="relative w-9 h-9 flex items-center justify-center rounded-lg transition-colors"
         style={{ color: open ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.55)" }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "rgba(255,255,255,0.9)"; }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+          e.currentTarget.style.color = "rgba(255,255,255,0.9)";
+        }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = open ? "rgba(255,255,255,0.08)" : "transparent";
           e.currentTarget.style.color = open ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.55)";
@@ -108,9 +112,12 @@ export default function NotificationsButton({ onNavigate }: NotificationsButtonP
           {/* Tabs */}
           <div className="flex items-center gap-1 px-4 pt-3 pb-1">
             {TAB_LABELS.map((t) => {
-              const count = t.id === "unread" ? unreadCount :
-                            t.id === "reminders" ? notifications.filter((n) => n.type === "reminder" || n.type === "warranty").length :
-                            notifications.length;
+              const count =
+                t.id === "unread"
+                  ? unreadCount
+                  : t.id === "reminders"
+                    ? notifications.filter((n) => n.type === "reminder" || n.type === "warranty").length
+                    : notifications.length;
               return (
                 <button
                   key={t.id}
@@ -142,16 +149,17 @@ export default function NotificationsButton({ onNavigate }: NotificationsButtonP
                 <p className="text-xs text-muted-foreground mt-1">No notifications in this category.</p>
               </div>
             ) : (
-              visible.map((n) => (
-                <NotificationItem key={n.id} notification={n} onRead={markRead} />
-              ))
+              visible.map((n) => <NotificationItem key={n.id} notification={n} onRead={markRead} />)
             )}
           </div>
 
           {/* Footer */}
           <div className="border-t border-border px-4 py-3">
             <button
-              onClick={() => { setOpen(false); onNavigate?.("notifications"); }}
+              onClick={() => {
+                setOpen(false);
+                onNavigate?.("notifications");
+              }}
               className="w-full text-center text-xs font-semibold text-accent hover:text-accent/80 transition-colors py-1 rounded-lg hover:bg-accent/5"
             >
               View all notifications
